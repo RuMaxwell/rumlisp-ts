@@ -1,0 +1,19 @@
+expr := atom | '(' expr* ')' | '[' expr* ']' | '{' (expr expr)* '}'
+
+atom := NUMBER | STRING | VARID
+
+macro := '(' "macro" '(' VARID macro.arg* ')' macro.expr ')'
+
+macro.arg := (atom | macro.atomarg | macro.section | macro.selector | '(' macro.arg* ')' | '[' macro.arg* ']' | '{' macro.arg* '}' ) (%empty | '+' | '*' | '?' | "+?" | "*?")
+
+macro.atomarg := '%' VARID? '{' macro.struct '}'
+
+macro.section := '%' VARID? '(' macro.arg+ ')'
+
+macro.selector := '%' VARID? '[' macro.struct macro.struct+ ']'
+
+macro.struct := "expr" | "token" | "number" | "string" | "ident"
+
+macro.expr := atom | macro.atom | '(' macro.expr* ')' | '[' macro.expr* ']' | '{' (macro.expr macro.expr) '}'
+
+macro.atom := '%' VARID | '%' '%' VARID

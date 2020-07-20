@@ -1,0 +1,14 @@
+{
+  "name": "rumlisp_ts",
+  "version": "1.0.0",
+  "description": "",
+  "main": "build/index.js",
+  "scripts": {
+    "test": "tsc && node build/test.js"
+  },
+  "author": "RuMaxwell <935906960@qq.com>",
+  "license": "MIT",
+  "dependencies": {
+    "@types/node": "^14.0.23"
+  }
+}

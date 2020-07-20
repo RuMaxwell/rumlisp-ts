@@ -1,0 +1,9 @@
+.vscode
+build
+node_modules
+temp.*
+*.temp
+temp
+**/temp.*
+**/*.temp
+**/temp
