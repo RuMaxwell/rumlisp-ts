@@ -1,11 +1,11 @@
-import { Lexer, TokenType } from "./lexer"
 import fs from "fs"
+import { Lexer, TokenType } from "./lexer"
 import { Parser } from "./ll-parser"
-
-const source = fs.readFileSync('examples/test.risp').toString()
+import { execute } from "./semantics"
 
 class Tests {
   static tokenizer_test() {
+    const source = fs.readFileSync('examples/lexer_test.risp').toString()
     const lexer = new Lexer(source)
     let token = lexer.init
 
@@ -25,6 +25,7 @@ class Tests {
   }
 
   static parser_test() {
+    const source = fs.readFileSync('examples/parser_test.risp').toString()
     const parser = new Parser(source)
     let ast = parser.parse()
     ast.handle(
@@ -32,6 +33,19 @@ class Tests {
       err => console.error(err)
     )
   }
+
+  static semantics_test() {
+    const source = fs.readFileSync('examples/semantics_test.risp').toString()
+    let values = execute(source)
+    values.handle(
+      vals => {
+        for (let i in vals) {
+          console.log(`${vals[i]}`)
+        }
+      },
+      err => console.error(err)
+    )
+  }
 }
 
-Tests.parser_test()
+Tests.semantics_test()

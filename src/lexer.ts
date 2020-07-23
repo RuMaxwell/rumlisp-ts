@@ -113,7 +113,7 @@ const rumlispLexRules: Rule[] = [
     }
   }),
   // "hello" (strings can contain line breaks)
-  new Rule(/^".+?"/s, makeGenerator(TokenType.string)),
+  new Rule(/^".*?"/s, makeGenerator(TokenType.string)),
   new Rule(/^\(/, makeGenerator(TokenType.symbol)),
   new Rule(/^\)/, makeGenerator(TokenType.symbol)),
   new Rule(/^\[/, makeGenerator(TokenType.symbol)),

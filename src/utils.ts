@@ -34,7 +34,7 @@ export class Right<L, R> implements Either<L, R> {
 
   constructor(value: R) {
     this.value = value
-    throw new Error(`${this.value}`)
+    // throw new Error(`${this.value}`) // DEBUG
   }
 
   isLeft(): boolean {

@@ -372,7 +372,7 @@ If no value to be removed, a runtime error will arise.
 
 
 
-**`(get <List a> <index:Number>)` -> `*`**
+**`(get <List> <index:Number>)` -> `*`**
 
 Get the value at the index in the list.
 
@@ -380,11 +380,19 @@ The index will be implicitly converted to integer, using `trunc` function, which
 
 
 
-**`(set <List a> <index:Number> <value:expression>)` -> `*`**
+**`(set <List> <index:Number> <value:expression>)` -> `*`**
 
 Set the value at the index in the list.
 
 The index will be implicitly converted to integer, using `trunc` function, which directly cut off the fractional part of the number.
+
+
+
+**`(slice <List> <start:Number> <end:Number>)` -> `<List>`**
+
+
+
+**`(splice <List> <start:Number> <count:Number> <insert:List>)` -> `<List>`**
 
 
 

@@ -1,0 +1,15 @@
+(let (map list fn)
+  (do
+  (println list)
+  (println (empty? list))
+  (empty? list)
+    []
+    (do
+      (let h (get list 0))
+      (let t (slice list 1 (len list)))
+      (let tm (map t fn))
+      (push-front tm (fn h)))))
+
+(let (inc x) (add x 1))
+
+(map [1 2 3] (\ (x) (inc x)))

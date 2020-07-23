@@ -20,7 +20,6 @@ export class Parser {
 
       if (res.isLeft()) {
         result.unwrapLeft().push(res.unwrapLeft())
-        console.log(res.unwrapLeft()) // FIXME: DEBUG
       } else {
         let r = res.unwrapRight()
         if (r !== 'eof') {
@@ -75,34 +74,40 @@ function parseExpr(lexer: Lexer): Either<Expr, string> {
     if (KEYWORD[token.literal] !== undefined) {
       return new Right(`syntax error: unexpected keyword ${token.literal}${token.locate()}`)
     } else {
-      return new Left(new Var(token.literal))
+      return new Left(new Var(token.literal, token.locate()))
     }
   } else if (token.type === TokenType.err) {
     return new Right(token.toString())
+  } else if (token.type === TokenType.eof) {
+    return new Right('eof')
   } else {
     throw new Error(`unknown internal error: in parseExpr: ${token}`)
   }
 }
 
-class Var {
+export class Var {
   id: string
+  location: string
 
-  constructor(id: string) {
+  constructor(id: string, location: string) {
     this.id = id
+    this.location = location
   }
 }
 
-class SExpr {
+export class SExpr {
   caller?: Expr
   args: Expr[]
+  location: string
 
-  constructor(items: Expr[]) {
+  constructor(items: Expr[], location: string) {
     if (items.length === 0) {
       this.caller = undefined
       this.args = []
     }
     this.caller = items[0]
     this.args = items.slice(1)
+    this.location = location
   }
 
   get isUnit(): boolean {
@@ -114,6 +119,8 @@ function parseSExpr(lexer: Lexer): Either<SExpr | ExprLetVar | ExprLetFunc | Exp
   if (lexer.eof) {
     return new Right(UNEXP_EOF)
   }
+
+  let location = ` at line ${lexer.line}, column ${lexer.column}`
 
   let items: Expr[] = []
 
@@ -142,10 +149,10 @@ function parseSExpr(lexer: Lexer): Either<SExpr | ExprLetVar | ExprLetFunc | Exp
   // cast off ')' symbol
   lexer.next()
 
-  return new Left(new SExpr(items))
+  return new Left(new SExpr(items, location))
 }
 
-class ListExpr {
+export class ListExpr {
   items: Expr[]
 
   constructor(items: Expr[]) {
@@ -181,7 +188,7 @@ function parseListExpr(lexer: Lexer): Either<ListExpr, string> {
   return new Left(result)
 }
 
-class DictEntry {
+export class DictEntry {
   key: Expr
   value: Expr
 
@@ -219,7 +226,7 @@ function parseDictEntry(lexer: Lexer): Either<DictEntry, string> {
   }
 }
 
-class DictExpr {
+export class DictExpr {
   entries: DictEntry[]
 
   constructor(entries: DictEntry[]) {
@@ -262,7 +269,7 @@ function parseDictExpr(lexer: Lexer): Either<DictExpr, string> {
   return new Left(result)
 }
 
-class ExprLetVar {
+export class ExprLetVar {
   id: string
   expr: Expr
 
@@ -272,15 +279,17 @@ class ExprLetVar {
   }
 }
 
-class ExprLetFunc {
+export class ExprLetFunc {
   id: string
   params: string[]
   body: Expr
+  location: string
 
-  constructor(id: string, params: string[], body: Expr) {
+  constructor(id: string, params: string[], body: Expr, location: string) {
     this.id = id
     this.params = params
     this.body = body
+    this.location = location
   }
 }
 
@@ -334,6 +343,7 @@ function parseLetFunc(lexer: Lexer): Either<ExprLetFunc, string> {
       return new Right(`syntax error: unexpected keyword ${token.literal}${token.locate()}`)
     } else {
       let id = token.literal
+      let location = token.locate()
       let params: string[] = []
 
       let paren = lexer.saveParenCounter()
@@ -370,20 +380,22 @@ function parseLetFunc(lexer: Lexer): Either<ExprLetFunc, string> {
         return new Right(`syntax error: expected ')'${token.locate()}`)
       }
 
-      return new Left(new ExprLetFunc(id, params, body.unwrapLeft()))
+      return new Left(new ExprLetFunc(id, params, body.unwrapLeft(), location))
     }
   } else {
     return new Right(`syntax error: expected IDENTIFIER${token.locate()}`)
   }
 }
 
-class ExprLambda {
+export class ExprLambda {
   args: string[]
   body: Expr
+  location: string
 
-  constructor(args: string[], body: Expr) {
+  constructor(args: string[], body: Expr, location: string) {
     this.args = args
     this.body = body
+    this.location = location
   }
 }
 
@@ -391,6 +403,7 @@ function parseLambda(lexer: Lexer): Either<ExprLambda, string> {
   if (lexer.eof) {
     return new Right(UNEXP_EOF)
   }
+  let location = ` at line ${lexer.line}, column ${lexer.column}`
 
   let token = lexer.next()
   if (!(token.type === TokenType.symbol && token.literal === '(')) {
@@ -427,10 +440,10 @@ function parseLambda(lexer: Lexer): Either<ExprLambda, string> {
     return new Right(`syntax error: expected ')'${token.locate()}`)
   }
 
-  return new Left(new ExprLambda(args, body.unwrapLeft()))
+  return new Left(new ExprLambda(args, body.unwrapLeft(), location))
 }
 
-class ExprDo {
+export class ExprDo {
   exprs: Expr[]
 
   constructor(exprs: Expr[]) {
