@@ -392,7 +392,7 @@ The index will be implicitly converted to integer, using `trunc` function, which
 
 
 
-**`(splice <List> <start:Number> <count:Number> <insert:List>)` -> `<List>`**
+**`(del-ins <List> <start:Number> <count:Number> <insert:List>)` -> `<List>`**
 
 
 
