@@ -68,7 +68,8 @@ function parseExpr(lexer: Lexer): Either<Expr, string> {
       case '{':
         return parseDictExpr(lexer)
       default:
-        return new Right(`not implemented: '${token.literal}'${token.locate()}`)
+        return new Right(`syntax error: unexpected '${token.literal}'${token.locate()}`)
+        // return new Right(`not implemented: '${token.literal}'${token.locate()}`)
     }
   } else if (token.type === TokenType.identifier) {
     if (KEYWORD[token.literal] !== undefined) {

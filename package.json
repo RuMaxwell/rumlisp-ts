@@ -4,11 +4,15 @@
   "description": "",
   "main": "build/index.js",
   "scripts": {
-    "test": "tsc && node build/test.js"
+    "test": "tsc && node build/test.js",
+    "start": "tsc && node build/index.js"
   },
   "author": "RuMaxwell <935906960@qq.com>",
   "license": "MIT",
   "dependencies": {
-    "@types/node": "^14.0.23"
+    "@types/node": "^14.0.23",
+    "@types/readline-sync": "^1.4.3",
+    "readline-sync": "^1.4.10",
+    "scanf": "^1.1.1"
   }
 }

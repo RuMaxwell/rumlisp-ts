@@ -1,8 +1,5 @@
 (let (map list fn)
-  (do
-  (println list)
-  (println (empty? list))
-  (empty? list)
+  ((empty? list)
     []
     (do
       (let h (get list 0))

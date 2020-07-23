@@ -75,15 +75,29 @@ export class Closure {
     return `Closure (${this.meta.id} ${argList}) Expr {env}`
   }
 
-  call(args: Value[], location: string): Either<Value, string> {
+  // refactor: let function itself decide whether to evaluate the arguments
+  // call(args: Value[], location: string): Either<Value, string> {
+  call(argEnv: Env, args: Parser.Expr[], location: string): Either<Value, string> {
     if (args.length !== this.params.length) {
       return new Right(`not enough argument: function '${this.meta.id}' defined${this.meta.location}: expected ${this.params.length}, got ${args.length}${location}`)
     }
 
+    // current: user-defined functions must evaluate arguments in the beginning
+    let vals: Value[] = []
+
+    for (let i in args) {
+      let val = evaluate(argEnv, args[i])
+      if (val.isLeft()) {
+        vals.push(val.unwrapLeft())
+      } else {
+        return val
+      }
+    }
+
     let env: Env = this.env
-    for (let i = 0; i < args.length; i++) {
+    for (let i in vals) {
       let p = this.params[i]
-      let a = args[i]
+      let a = vals[i]
       env = env.pushed()
       env.set(p, a)
     }
@@ -103,12 +117,29 @@ class BuiltinClosure {
     this._call = call
   }
 
-  call(args: Value[], location: string): Either<Value, string> {
+  call(argEnv: Env, args: Parser.Expr[], location: string): Either<Value, string> {
     if (args.length !== this.params.length) {
       return new Right(`not enough argument: function '${this.id}': expected ${this.params.length}, got ${args.length}${location}`)
     }
 
-    return this._call(args, location)
+    if (this === boolTrue) {
+      return evaluate(argEnv, args[0])
+    } else if (this === boolFalse) {
+      return evaluate(argEnv, args[1])
+    }
+
+    let vals: Value[] = []
+
+    for (let i in args) {
+      let val = evaluate(argEnv, args[i])
+      if (val.isLeft()) {
+        vals.push(val.unwrapLeft())
+      } else {
+        return val
+      }
+    }
+
+    return this._call(vals, location)
   }
 
   toString(): string {
@@ -726,6 +757,29 @@ export function execute(source: string): Either<Value[], string> {
         let val = evaluate(env, exprs[i])
         if (val.isLeft()) {
           vals.push(val.unwrapLeft())
+          // console.log('Internal result: ' + val.unwrapLeft()) // DEBUG
+        } else {
+          return new Right(val.unwrapRight())
+        }
+      }
+      return new Left(vals)
+    },
+    err => new Right(err)
+  )
+}
+
+const interpretEnv = initialEnv
+// executes, but preserves the environment
+export function interpret(source: string): Either<Value[], string> {
+  const parser = new Parser.Parser(source)
+  let ast = parser.parse()
+  return ast.handle<Either<Value[], string>>(
+    exprs => {
+      let vals: Value[] = []
+      for (let i = 0; i < exprs.length; i++) {
+        let val = evaluate(interpretEnv, exprs[i])
+        if (val.isLeft()) {
+          vals.push(val.unwrapLeft())
         } else {
           return new Right(val.unwrapRight())
         }
@@ -757,19 +811,20 @@ function evaluate(env: Env, expr: Parser.Expr): Either<Value, string> {
       if (callerVal.isLeft()) {
         let clos = callerVal.unwrapLeft()
         if (clos instanceof Closure || clos instanceof BuiltinClosure) {
-          let vals: Value[] = []
+          // refactor: let function itself decide whether to evaluate the arguments
+          // let vals: Value[] = []
 
-          for (let i = 0; i < expr.args.length; i++) {
-            let arg = expr.args[i]
-            let val = evaluate(env, arg)
-            if (val.isLeft()) {
-              vals.push(val.unwrapLeft())
-            } else {
-              return val
-            }
-          }
+          // for (let i = 0; i < expr.args.length; i++) {
+            // let arg = expr.args[i]
+            // let val = evaluate(env, arg)
+            // if (val.isLeft()) {
+            //   vals.push(val.unwrapLeft())
+            // } else {
+            //   return val
+            // }
+          // }
 
-          return clos.call(vals, expr.location)
+          return clos.call(env, expr.args, expr.location)
         } else {
           return new Right(`not callable: result of the first item of this s-expression is not a closure${expr.location}; result was ${clos}`)
         }
