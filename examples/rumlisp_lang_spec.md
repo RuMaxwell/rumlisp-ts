@@ -4,13 +4,21 @@ RumLisp: A Lisp dialect for file system processing. Source file extension: .risp
 
 *Genre: Rum Programming Languages Plan - RumLisp*
 
+
+
 ## Features
 
 * Dynamic typing, slightly strong typed;
 * Easy syntax for file system access;
-* Adaptable convertion from/to JSON;
+* Adaptable conversion from/to JSON;
 * Powerful macro programming;
 * Concurrency capability.
+
+
+
+[TOC]
+
+
 
 ## Syntax
 
@@ -36,11 +44,11 @@ TODO: Support various way to represent numbers.
 
 A String is a series of ASCII characters enclosed by a pair of quotes (`"`), like `"Hello, world!"`. Strings are used to represent URIs, i.e. the resources in a file system.
 
-Strings can perform concatination (`+`), path join (`/`), indexing, substitution, and many built-in operations. Details are in [Strings chapter](#3. Strings) and [Operators chapter](#1. Operators).
+Strings can perform concatenation (`+`), path join (`/`), indexing, substitution, and many built-in operations. Details are in [Strings chapter](#3. Strings) and [Operators chapter](#1. Operators).
 
 Strings are allocated on the heap and copied whenever reused. They are stored in 8-bit integer arrays.
 
-TODO: Support UTF-8.
+TODO: Support UTF-8. Support escape characters.
 
 
 
@@ -48,7 +56,7 @@ TODO: Support UTF-8.
 
 A List is a collection of arbitrary number of values. To directly create a List containing certain values, use brackets to enclosed them, like `[1, 2, "Good"]`. `[]` is a special constructor, it creates an empty list.
 
-Lists can perform concatination (`+`), indexing, mapping, and many built-in operations. Details are in [Lists chapter](#4. Lists) and [Operators chapter](#1. Operators).
+Lists can perform concatenation (`+`), indexing, mapping, and many operations. Details are in [Lists chapter](#4. Lists) and [Operators chapter](#1. Operators).
 
 Lists are allocated on the heap and are implemented by arrays storing values of predictable data types. Lists are shared by references and will never copied on reuse. However, its contents can be cloned into a new list.
 
@@ -60,7 +68,7 @@ A Dictionary records maps from keys to values, where keys are nonredundant value
 
 A Dictionary can be directly created by `{}` syntax. Detailed are in [Dictionaries chapter](#5. Dictionaries).
 
-Dictionaries support addtion and deletion of entries, get entries from keys, set values of entries and traversal of keys and values and others. Details are in [Dictionaries chapter](#5. Dictionaries).
+Dictionaries support addition and deletion of entries, get entries from keys, set values of entries and traversal of keys and values and others. Details are in [Dictionaries chapter](#5. Dictionaries).
 
 Dictionaries are allocated on the heap and are implemented by red-black trees. Dictionaries are shared by references and will never copied on reuse. However, its contents can be cloned into a new list.
 
@@ -96,9 +104,9 @@ Values actually carries type information used to validate operations and do runt
 
 A function is a special variable that can be called with arguments. Functions are also created by `let` directive, using `(let (function_name arg ...) body)`. Its takes arbitrary number of parameters/arguments and when called, evaluated to new values according to how it is defined in the body.
 
-An S-Expression is a nested structure that several atomic tokens or expressions are seperated and listed in double parenthesis. Namely, `(1 2 3)` `(+ 1 2)` `(f (+ 1 2) (* 3 (g 1)))` are S-Expressions. In facts, all RumLisp and other Lisp dialects have is S-Expression. A RumLisp program consists of one or more S-Expressions on the root. Specially, `()` which is called a *unit*, is also defined as an S-Expression and represent nothingness. It can be used, on funtion result value to represent no result, or be used on variable definition to represent uninitialzed state.
+An S-Expression is a nested structure that several atomic tokens or expressions are separated and listed in double parenthesis. Namely, `(1 2 3)` `(+ 1 2)` `(f (+ 1 2) (* 3 (g 1)))` are S-Expressions. In facts, all RumLisp and other Lisp dialects have is S-Expression. A RumLisp program consists of one or more S-Expressions on the root. Specially, `()` which is called a *unit*, is also defined as an S-Expression and represent nothingness. It can be used, on function result value to represent no result, or be used on variable definition to represent uninitialized state.
 
-To call a function we have to write an S-Expression, where the first item is the function's name, followed by one and another arguments, like `(func_name arg ...)`. Functions with zero arguments is allowed, and implicitly implemented as funtions only taking `()` as input. To define and call them, use `(let (func_name) body)` and `(func_name)`, and the equivalent form `(let (func_name ()) body)` and `(func_name ())`.
+To call a function we have to write an S-Expression, where the first item is the function's name, followed by one and another arguments, like `(func_name arg ...)`. Functions with zero arguments is allowed, and implicitly implemented as functions only taking `()` as input. To define and call them, use `(let (func_name) body)` and `(func_name)`, and the equivalent form `(let (func_name ()) body)` and `(func_name ())`.
 
 If in an S-Expression the first item is not a function, a runtime error will arise.
 
@@ -136,7 +144,7 @@ In RumLisp, most of things are expressions, and every expression evaluates to a 
 
 #### Atomic Expression
 
-Numbers, Strings, Lists, Dictionaries, Boolean, variables and an S-Expression itself belong to atomic expression. They can be seen as undivideable units in their outer S-Expression.
+Numbers, Strings, Lists, Dictionaries, Boolean, variables and an S-Expression itself belong to atomic expression. They can be seen as undividable units in their outer S-Expression.
 
 
 
@@ -158,7 +166,7 @@ Shortcut of `(if <Boolean> then <expression> else ())`.
 
 **`(do <expression> ... )`**
 
-Sequentially evaluates arbitrary number of expressions, and the whole procudure expression evaluates to the last inner expression's value.
+Sequentially evaluates arbitrary number of expressions, and the whole procedure expression evaluates to the last inner expression's value.
 
 
 
@@ -172,9 +180,17 @@ Same as `()`.
 
 ### 1. Operators
 
-**`+`: `Number ... -> Number` `String ... -> String` `List ... -> List` `List of Number -> Number` `List of String -> String`**
+**`+`: `Number ... -> Number` **
 
-Numeric addition, string concatination and list concatination. It can have arbitrary number (**>= 1**) of operands to calculate a sum, but only in the same type.
+**`String ... -> String` **
+
+**`List ... -> List` **
+
+**`List of Number -> Number` **
+
+**`List of String -> String`**
+
+Numeric addition, string concatenation and list concatenation. It can have arbitrary number (**>= 1**) of operands to calculate a sum, but only in the same type.
 
 ```rumlisp
 (+ 1)                     ; 1
@@ -200,7 +216,9 @@ Numeric addition, string concatination and list concatination. It can have arbit
 
 
 
-**`-`: `Number ... -> Number` `List of Number -> Number`**
+**`-`: `Number ... -> Number` **
+
+**`List of Number -> Number`**
 
 Numeric subtraction and negative sign. It can have arbitrary number (**>= 1**) of operands to do multiple subtractions on the first operand.
 
@@ -214,13 +232,21 @@ Numeric subtraction and negative sign. It can have arbitrary number (**>= 1**) o
 
 
 
-**`*`: `Number Number ... -> Number` `List of Number -> Number`**
+**`*`: `Number Number ... -> Number` **
+
+**`List of Number -> Number`**
 
 Numeric multiplication. It can have arbitrary number (**>= 2**) of operands to calculate a product.
 
 
 
-**`/`: `Number Number ... -> Number` `String String ... -> String` `List of Number -> Number` `List of String -> String`**
+**`/`: `Number Number ... -> Number` **
+
+**`String String ... -> String` **
+
+**`List of Number -> Number` **
+
+**`List of String -> String`**
 
 Numeric division and path join. It can have arbitrary number (**>= 2**) of operands to do multiple divisions, or join multiple paths.
 
@@ -257,10 +283,10 @@ Integer modulation (find remainder). Arguments are casted into integer by `trunc
 
 
 
-**`b&`: `Number Number ... -> Number` `List of Number -> Number`**
-**`b|`: `Number Number ... -> Number` `List of Number -> Number`**
-**`b^`: `Number Number ... -> Number` `List of Number -> Number`**
-**`b~`: `Number Number ... -> Number` `List of Number -> Number`**
+**`b&`: `Number Number ... -> Number`   `List of Number -> Number`**
+**`b|`: `Number Number ... -> Number`   `List of Number -> Number`**
+**`b^`: `Number Number ... -> Number`   `List of Number -> Number`**
+**`b~`: `Number Number ... -> Number`   `List of Number -> Number`**
 
 
 
@@ -269,18 +295,18 @@ Integer modulation (find remainder). Arguments are casted into integer by `trunc
 
 
 
-**`&&`: `Boolean Boolean ... -> Boolean` `List of Boolean -> Boolean`**
-**`||`: `Boolean Boolean ... -> Boolean` `List of Boolean -> Boolean`**
+**`&&`: `Boolean Boolean ... -> Boolean`   `List of Boolean -> Boolean`**
+**`||`: `Boolean Boolean ... -> Boolean`   `List of Boolean -> Boolean`**
 **`not`: `Boolean -> Boolean`**
 
 
 
 **`=`: `* * -> Boolean`**
 **`!=`: `* * -> Boolean`**
-**`>`: `Number Number ... -> Boolean` `String String ... -> Boolean` `List List ... -> Boolean`**
-**`<`: `Number Number ... -> Boolean` `String String ... -> Boolean` `List List ... -> Boolean`**
-**`>=`: `Number Number ... -> Boolean` `String String ... -> Boolean` `List List ... -> Boolean`**
-**`<=`: `Number Number ... -> Boolean` `String String ... -> Boolean` `List List ... -> Boolean`**
+**`>`: `Number Number ... -> Boolean`   `String String ... -> Boolean`   `List List ... -> Boolean`**
+**`<`: `Number Number ... -> Boolean`   `String String ... -> Boolean`   `List List ... -> Boolean`**
+**`>=`: `Number Number ... -> Boolean`   `String String ... -> Boolean`   `List List ... -> Boolean`**
+**`<=`: `Number Number ... -> Boolean`   `String String ... -> Boolean`   `List List ... -> Boolean`**
 
 
 
@@ -288,25 +314,35 @@ Integer modulation (find remainder). Arguments are casted into integer by `trunc
 
 **`(trunc <Number>)` -> `Number`**
 
+Returns the integral part of the a numeric expression, x, removing any fractional digits.
+
 
 
 **`(floor <Number>)` -> `Number`**
+
+Returns the greatest integer less than or equal to its numeric argument.
 
 
 
 **`(ceil <Number>)` -> `Number`**
 
+Returns the smallest integer greater than or equal to its numeric argument.
+
 
 
 **`(round <Number>)` -> `Number`**
+
+Returns a supplied numeric expression rounded to the nearest integer.
 
 
 
 **`(abs <Number>)` -> `Number`**
 
+Returns the absolute value of a number (the value without regard to whether it is positive or negative).
 
 
-**`(#int <Number>)` -> `#Int`**
+
+***Not Implemented*** `(#int <Number>)` -> `#Int`
 
 Forces a number to be an integer. `#Int` is a built-in type representing 64-bit integer.
 
@@ -316,19 +352,33 @@ Forces a number to be an integer. `#Int` is a built-in type representing 64-bit 
 
 **`(show <*>)` -> `String`**
 
+Gives the string representation of a value.
+
 
 
 **`(parse <String>)` -> `Number`**
+
+Parses a string to get a number out of it.
 
 
 
 **`(chars <String>)` -> `List of String`**
 
+Returns a list containing every character in the string.
+
 
 
 **`(abs <String>)` -> `String`**
 
-Calculates absolute path.
+Calculates the absolute path.
+
+
+
+**`(slice <String> <start:Number> <end:Number>)` -> `String`**
+
+Gets a slice of the string.
+
+Negative index numbers are from the last element. e.g. `-1` = `(len <String>) - 1`.
 
 
 
@@ -336,11 +386,11 @@ Calculates absolute path.
 
 **`[ <expression> ... ]`**
 
-Declaration of a List.
+Creates a List.
 
 
 
-**`(count <List>)` -> `Number`**
+**`(len <List>)` -> `Number`**
 
 Gets how many values are stored in the list.
 
@@ -348,11 +398,11 @@ Gets how many values are stored in the list.
 
 **`(push <List> <expression>)` -> `List`**
 
-Appends a value to the list.
+Appends a value to the list and returns the resultant list.
 
 
 
-**`(pop <List>)` -> `List`**
+**`(pop <List>)` -> `*`**
 
 Removes the last value of the list and returns it.
 
@@ -360,11 +410,11 @@ Removes the last value of the list and returns it.
 
 **`(push-front <List> <expression>)` -> `List`**
 
-Prepends a value to the list.
+Prepends a value to the list and returns the resultant list.
 
 
 
-**`(pop-front <List>)` -> `List`**
+**`(pop-front <List>)` -> `*`**
 
 Removes the first value of the list and returns it.
 
@@ -390,15 +440,19 @@ The index will be implicitly converted to integer, using `trunc` function, which
 
 **`(slice <List> <start:Number> <end:Number>)` -> `<List>`**
 
+Gets a slice of the list.
+
 
 
 **`(del-ins <List> <start:Number> <count:Number> <insert:List>)` -> `<List>`**
+
+Deletes a number of items of the list at a point, and then insert several items at the same point.
 
 
 
 **`(+ <List>...)` -> `List`**
 
-Concatinates lists to form a new list.
+Concatenates lists to form a new list.
 
 The input lists are not modified.
 
@@ -412,7 +466,7 @@ Appends `<List>1` to `<List>0`.
 
 
 
-**`(map <List> <function val -> res>)` -> `List`**
+**`(map <List> <function val -> res>)` -> `List`**   *(will be in std)*
 
 For each value in the list, applies a function to it and returns a new list containing all the results in the same order.
 
@@ -420,15 +474,15 @@ e.g. `(map [1 2 3] (\ x (+ x 1))` => `[2 3 4]`
 
 
 
-**`(filter <List> <function val -> Boolean>` -> `List`**
+**`(filter <List> <function val -> Boolean>` -> `List`**   *(will be in std)*
 
-Filters out all values not satisfying the given contraint (i.e. when called by the function, results in `#f`) in the list, returns a new list only containing values satifying the contraint.
+Filters out all values not satisfying the given constraint (i.e. when called by the function, results in `#f`) in the list, returns a new list only containing values satisfying the constraint.
 
 e.g. `(filter [-1 0 2 3] (\ x (> x 0))` => `[2 3]`
 
 
 
-**`(contains <List>0 <List>1)` `(contains-ne <List>0 <List>1)` `(eq <List>0 <List>1)` `(neq <List>0 <List>1)`**
+***Not Implemented***  **`(contains <List>0 <List>1)` `(contains-ne <List>0 <List>1)` `(eq <List>0 <List>1)` `(neq <List>0 <List>1)`**
 
 
 
@@ -438,7 +492,7 @@ Dictionaries are implemented by red-black trees, and keys are compared using bui
 
 **`{ (<key:expression> <value:expression>) ... }`** (Lisp style) or
 
-**`{ <key:expression> : <value:expression>` `, <key:expression> : <value:expression>`* `,`? `}`** (JSON style)
+***Not Implemented*** **`{ <key:expression> : <value:expression>` `, <key:expression> : <value:expression>`* `,`? `}`** (JSON style)
 
 Creates a dictionary with given entries.
 

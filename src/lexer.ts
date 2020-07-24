@@ -106,7 +106,7 @@ function makeGenerator(tokenType: TokenType): Generator {
 const rumlispLexRules: Rule[] = [
   // number and identifier
   new Rule(/^[^ \t\r\n()\[\]{};`%"]+/, (literal, line, column) => {
-    if (/^\d+(\.\d+)?$/.test(literal)) {
+    if (/^-?\d+(\.\d+)?$/.test(literal)) {
       return new Token(TokenType.number, literal, line, column)
     } else {
       return new Token(TokenType.identifier, literal, line, column)
