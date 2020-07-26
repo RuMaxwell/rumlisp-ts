@@ -1,3 +1,7 @@
+import { Either, Right, Left } from "./utils"
+import { List } from "./semantics"
+import { ListExpr } from "./ll-parser"
+
 class SourcePosition {
   source: string
   line: number
@@ -60,7 +64,7 @@ export enum TokenType {
   err
 }
 
-class Token {
+export class Token {
   type: TokenType
   literal: string
   line?: number
@@ -79,6 +83,58 @@ class Token {
 
   locate(): string {
     return this.line !== undefined ? ` at line ${this.line}, column ${this.column}` : ''
+  }
+}
+
+export class TokenUnchecked {
+  token: Token
+
+  constructor(token: Token) {
+    this.token = token
+  }
+
+  check(): Either<Token, string> {
+    if (this.token.type === TokenType.eof) {
+      return new Right('syntax error: unexpected EOF')
+    } else if (this.token.type === TokenType.err) {
+      return new Right(this.token.toString())
+    } else {
+      return new Left(this.token)
+    }
+  }
+
+  expect<L>(expected: TokenType | string, callback?: (token: Token) => Either<L, string>): Either<Token | L, string> {
+    if (this.token.type === TokenType.eof) {
+      return new Right('syntax error: unexpected EOF')
+    } else if (this.token.type === TokenType.err) {
+      return new Right(this.token.toString())
+    }
+    
+    if (typeof expected === 'string') {
+      if (this.token.literal === expected) {
+        if (callback === undefined) {
+          return new Left(this.token)
+        } else {
+          return callback(this.token)
+        }
+      } else {
+        return new Right(`syntax error: expected '${expected}'${this.token.locate()}`)
+      }
+    } else {
+      if (this.token.type === expected) {
+        if (callback === undefined) {
+          return new Left(this.token)
+        } else {
+          return callback(this.token)
+        }
+      } else {
+        return new Right(`syntax error: expected `)
+      }
+    }
+  }
+
+  take(): Token {
+    return this.token
   }
 }
 

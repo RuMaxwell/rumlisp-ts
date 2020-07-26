@@ -424,7 +424,7 @@ export const BUILTINS: {[keys: string]: () => Value} = {
       if (typeof l === 'string') {
         let f = parseFloat(l)
         if (isNaN(f)) {
-          return new Right(`failed to parse '${l}' as a number${location}`)
+          throw new Error('number NaN')
         } else {
           return new Left(parseFloat(l))
         }
