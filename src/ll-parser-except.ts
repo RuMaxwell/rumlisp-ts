@@ -429,12 +429,12 @@ function parseDo(lexer: Lexer): ExprDo {
 
 class Macro {
   name: string
-  pattern: MacroArg[]
+  pattern: MacroPattern
   body: MacroExpr
 
-  constructor(name: string, pattern: MacroArg[], body: MacroExpr) {
+  constructor(name: string, args: MacroArg[], body: MacroExpr) {
     this.name = name
-    this.pattern = pattern
+    this.pattern = new MacroPattern(args)
     this.body = body
   }
 
@@ -750,6 +750,20 @@ function parseMacroExpr(lexer: Lexer): MacroExpr {
   }
 }
 
+class MacroPattern {
+  constructor(args: MacroArg[]) {
+  }
+
+  match(stack: (Token | Expr)[]): Reduction | undefined {
+    for (let i in this.productions) {
+      if (productions[i].match(stack)) {
+        return function(lexer) {
+        }
+      }
+    }
+  }
+}
+
 /**
  * Expands the macro call into a do expression.
  * This is actually an LR parser of macro call argument list. The syntax of the parser is defined by the macro definition.
@@ -768,15 +782,26 @@ function expandMacro(lexer: Lexer, macro: Macro): ExprDo {
     structMap.set(name, val)
   }
 
-  function matchArg(marg: MacroArg) {
-    // TODO:
+  let stack: (Token | Expr)[] = []
+
+  let paren = lexer.saveParenCounter()
+
+  let token = lexer.next().check()
+  stack.push(token)
+  while (!paren.eq(lexer.parenCounter)) {
+    let reduction = macro.pattern.match(stack)
+    if (reduction !== undefined) {
+      // reduce
+      reduction(stack)
+    } else {
+      // shift
+      token = lexer.next().check()
+      stack.push(token)
+    }
   }
 
-  for (let i in macro.pattern) {
-    let marg = macro.pattern[i]
+  // TODO: replace macro expr
 
-    matchArg(marg)
-  }
   return new ExprDo([/* TODO: resultant expression */])
 }
 
