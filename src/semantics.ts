@@ -1,4 +1,4 @@
-import * as Parser from './ll-parser'
+import * as Parser from './ll-parser-except'
 import { Either, Right, Left } from './utils'
 import * as path from 'path'
 
@@ -109,9 +109,9 @@ export class Closure {
 class BuiltinClosure {
   id: string
   params: string[]
-  _call: (args: Value[], location: string) => Either<Value, string>
+  _call: (args: Value[], location: string, env?: Env) => Either<Value, string>
 
-  constructor(id: string, params: string[], call: (args: Value[], location: string) => Either<Value, string>) {
+  constructor(id: string, params: string[], call: (args: Value[], location: string, env?: Env) => Either<Value, string>) {
     this.id = id
     this.params = params
     this._call = call
@@ -139,7 +139,7 @@ class BuiltinClosure {
       }
     }
 
-    return this._call(vals, location)
+    return this._call(vals, location, argEnv)
   }
 
   toString(): string {
@@ -685,6 +685,35 @@ export const BUILTINS: {[keys: string]: () => Value} = {
       let [x] = args
       process.stdout.write(`${x}\n`)
       return new Left(unit)
+    })
+  ,
+  'eval': () =>
+    new BuiltinClosure('eval', ['src'], (args, location, env) => {
+      let [src] = args
+      if (typeof src !== 'string') {
+        return new Right(`expected argument type (String) for 'eval'${location}`)
+      }
+      if (env === undefined) {
+        throw new Error('empty env on BuiltinClosure call')
+      }
+
+      let parseResult = new Parser.Parser(src).parse()
+      if (!parseResult.isLeft()) {
+        return new Right(parseResult.unwrapRight())
+      }
+      let exprs = parseResult.unwrapLeft()
+
+      let vals: Value[] = []
+      for (let i in exprs) {
+        let evalResult = evaluate(env, exprs[i])
+        if (evalResult.isLeft()) {
+          vals.push(evalResult.unwrapLeft())
+        } else {
+          return evalResult
+        }
+      }
+
+      return new Left(vals[vals.length - 1])
     })
   ,
 }

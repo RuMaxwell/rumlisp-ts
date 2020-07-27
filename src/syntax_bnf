@@ -10,6 +10,7 @@ do := '(' "do" expr* ')'
 
 macro := '(' "macro" '(' VARID macro.arg* ')' macro.expr ')'
 
+// TODO: 添加一个 macro.ref，形式是 %name，代表和前面一个 macro arg 完全一致的 arg
 macro.arg := (atom | macro.atomarg | macro.section | macro.selector | '(' macro.arg* ')' | '[' macro.arg* ']' | '{' macro.arg* '}' ) (%empty | '+' | '*' | '?' | "+?" | "*?")
 
 macro.atomarg := '%' VARID? '{' macro.struct '}'
@@ -23,3 +24,76 @@ macro.struct := "expr" | "token" | "number" | "string" | "ident"
 macro.expr := atom | macro.atom | '(' macro.expr* ')' | '[' macro.expr* ']' | '{' (macro.expr macro.expr)* '}'
 
 macro.atom := '%' VARID | '%' '%' VARID
+
+/*
+Macro expansion involves LR parsing (macro matches its call like regex)
+
+(macro (example %num{number} (for
+  %[%for-range(%iter{ident} in %range{expr})
+    %for-count(%init{expr}; %cond{expr}; %incre{expr})
+   ] %expr{expr})) ...)
+
+example := NUMBER '(' "for" example._anonymous0 expr ')'
+
+example._anonymous0 := example.for-range | example.for-count
+
+example.for-range := IDENT "in" expr
+
+example.for-count := expr ";" expr ";" expr
+
+(example 1 (for (i in [1, 2]) (print i)))
+(example 2 (for ((let i 1); (< i 3); (let i (inc i)))) (print i))
+
+Parse m 1
+input: 1 (for (i in [1, 2]) (print i))
+stack:
+reg:
+
+input: (for (i in [1, 2]) (print i))
+stack: 1    reduce 1 => NUMBER
+reg:
+
+input: for (i in [1, 2]) (print i))
+stack: NUMBER (
+reg: num = NUMBER(1)
+
+input: (i in [1, 2]) (print i))
+stack: NUMBER ( for    reduce for => IDENT
+reg: num = NUMBER(1)
+
+input: i in [1, 2]) (print i))
+stack: NUMBER ( IDENT (
+reg: num = NUMBER(1)
+
+input: in [1, 2]) (print i))
+stack: NUMBER ( IDENT ( i   reduce i => IDENT
+reg: num = NUMBER(1)
+
+input: in [1, 2]) (print i))
+stack: NUMBER ( IDENT ( IDENT
+reg: num = NUMBER(1), iter = IDENT(i)
+
+input: [1, 2]) (print i))
+stack: NUMBER ( IDENT ( IDENT in
+reg: num = NUMBER(1), iter = IDENT(i)
+
+input: ) (print i))
+stack: NUMBER ( IDENT ( IDENT in expr   reduce IDENT in expr => example.for-range
+reg: num = NUMBER(1), iter = IDENT(i)
+
+input: (print i))
+stack: NUMBER ( IDENT ( example.for-range )
+reg: num = NUMBER(1), iter = IDENT(i), range = expr([1, 2])
+
+input: )
+stack: NUMBER ( IDENT ( example.for-range ) expr
+reg: num = NUMBER(1), iter = IDENT(i), range = expr([1, 2]), expr = expr((print i))
+
+input: $
+stack: NUMBER ( IDENT ( example.for-range ) expr   reduce all => example
+reg: num = NUMBER(1), iter = IDENT(i), range = expr([1, 2]), expr = expr((print i))
+
+input:
+stack: example
+reg: num = NUMBER(1), iter = IDENT(i), range = expr([1, 2]), expr = expr((print i))
+*/

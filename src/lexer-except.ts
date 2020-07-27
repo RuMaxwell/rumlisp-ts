@@ -52,6 +52,36 @@ class SourcePosition {
   }
 }
 
+/**
+ * Benign EOF error.
+ */
+export class EOF implements Error {
+  name: string
+  message: string
+  stack?: string | undefined
+
+  constructor() {
+    this.name = 'EOF'
+    this.message = ''
+    this.stack = undefined
+  }
+}
+
+export class SyntaxError implements Error {
+  name: string
+  message: string
+  stack?: string | undefined
+
+  constructor(message: string) {
+    this.name = 'syntax error'
+    this.message = message
+  }
+
+  toString() {
+    return `${this.name}: ${this.message}`
+  }
+}
+
 export enum TokenType {
   init,
   number,
@@ -60,6 +90,32 @@ export enum TokenType {
   identifier,
   eof,
   err
+}
+
+class UncheckedToken {
+  token: Token
+
+  constructor(token: Token) {
+    this.token = token
+  }
+
+  check(): Token {
+    if (this.token.type === TokenType.eof) {
+      throw new SyntaxError(`unexpected EOF${this.token.locate()}`)
+    } else if (this.token.type === TokenType.err) {
+      throw new SyntaxError(this.toString())
+    }
+
+    return this.token
+  }
+
+  softCheck(): this {
+    if (this.token.type === TokenType.err) {
+      throw new Error(this.toString())
+    }
+
+    return this
+  }
 }
 
 export class Token {
@@ -81,58 +137,6 @@ export class Token {
 
   locate(): string {
     return this.line !== undefined ? ` at line ${this.line}, column ${this.column}` : ''
-  }
-}
-
-export class TokenUnchecked {
-  token: Token
-
-  constructor(token: Token) {
-    this.token = token
-  }
-
-  check(): Either<Token, string> {
-    if (this.token.type === TokenType.eof) {
-      return new Right('syntax error: unexpected EOF')
-    } else if (this.token.type === TokenType.err) {
-      return new Right(this.token.toString())
-    } else {
-      return new Left(this.token)
-    }
-  }
-
-  expect<L>(expected: TokenType | string, callback?: (token: Token) => Either<L, string>): Either<Token | L, string> {
-    if (this.token.type === TokenType.eof) {
-      return new Right('syntax error: unexpected EOF')
-    } else if (this.token.type === TokenType.err) {
-      return new Right(this.token.toString())
-    }
-    
-    if (typeof expected === 'string') {
-      if (this.token.literal === expected) {
-        if (callback === undefined) {
-          return new Left(this.token)
-        } else {
-          return callback(this.token)
-        }
-      } else {
-        return new Right(`syntax error: expected '${expected}'${this.token.locate()}`)
-      }
-    } else {
-      if (this.token.type === expected) {
-        if (callback === undefined) {
-          return new Left(this.token)
-        } else {
-          return callback(this.token)
-        }
-      } else {
-        return new Right(`syntax error: expected `)
-      }
-    }
-  }
-
-  take(): Token {
-    return this.token
   }
 }
 
@@ -250,13 +254,13 @@ export class Lexer {
     return this._parenCounter.copy()
   }
 
-  lookNext(): Token {
+  lookNext(): UncheckedToken {
     if (this.sp.eof) {
-      return eofToken
+      return new UncheckedToken(eofToken)
     }
 
     if (!this.skipWhites()) {
-      return eofToken
+      return new UncheckedToken(eofToken)
     }
 
     for (let i in this.rules) {
@@ -266,23 +270,23 @@ export class Lexer {
         let literal = matches[0]
         let tk = rule.generator(literal, this.sp.line, this.sp.column)
         // this.sp.advance(literal.length)
-        return tk
+        return new UncheckedToken(tk)
       }
     }
 
-    return new Token(TokenType.err, `unexpected character series`, this.sp.line, this.sp.column)
+    return new UncheckedToken(new Token(TokenType.err, `unexpected character series`, this.sp.line, this.sp.column))
   }
 
   /**
    * Resolves the next token.
    */
-  next(): Token {
+  next(): UncheckedToken {
     if (this.sp.eof) {
-      return eofToken
+      return new UncheckedToken(eofToken)
     }
 
     if (!this.skipWhites()) {
-      return eofToken
+      return new UncheckedToken(eofToken)
     }
 
     let token = this.matchFirst()
@@ -296,7 +300,7 @@ export class Lexer {
         case ')':
           this._parenCounter.decParen()
           if (this._parenCounter.hadErr()) {
-            return new Token(TokenType.err, 'unmatched parentheses', this.sp.line, this.sp.column)
+            return new UncheckedToken(new Token(TokenType.err, 'unmatched parentheses', this.sp.line, this.sp.column))
           }
           break
         case '[':
@@ -305,7 +309,7 @@ export class Lexer {
         case ']':
           this._parenCounter.decBrack()
           if (this._parenCounter.hadErr()) {
-            return new Token(TokenType.err, 'unmatched parentheses', this.sp.line, this.sp.column)
+            return new UncheckedToken(new Token(TokenType.err, 'unmatched parentheses', this.sp.line, this.sp.column))
           }
           break
         case '{':
@@ -314,7 +318,7 @@ export class Lexer {
         case '}':
           this._parenCounter.decCurly()
           if (this._parenCounter.hadErr()) {
-            return new Token(TokenType.err, 'unmatched parentheses', this.sp.line, this.sp.column)
+            return new UncheckedToken(new Token(TokenType.err, 'unmatched parentheses', this.sp.line, this.sp.column))
           }
           break
         default:
@@ -322,7 +326,7 @@ export class Lexer {
       }
     }
 
-    return token
+    return new UncheckedToken(token)
   }
 
   /**

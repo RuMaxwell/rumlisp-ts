@@ -1,7 +1,5 @@
 import { Lexer, TokenType, Token } from './lexer'
 import { Either, Right, Left } from './utils'
-import { symlink } from 'fs'
-import { ERANGE } from 'constants'
 
 export class Parser {
   lexer: Lexer
@@ -36,8 +34,6 @@ export class Parser {
 }
 
 const UNEXP_EOF = 'syntax error: unexpected EOF'
-// const UNEXP = function (literal: string, locate: string) { return `syntax error: unexpected ${literal}${locate}` }
-// const EXPCT = function (literal: string, locate: string) { return `syntax error: unexpected ${literal}${locate}` }
 
 type SyntaxHandler = (lexer: Lexer) => Either<ExprLetVar | ExprLetFunc | ExprLambda | ExprDo | Macro, string>
 
