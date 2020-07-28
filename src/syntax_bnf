@@ -28,18 +28,34 @@ macro.atom := '%' VARID | '%' '%' VARID
 /*
 Macro expansion involves LR parsing (macro matches its call like regex)
 
-(macro (example %num{number} (for
-  %[%for-range(%iter{ident} in %range{expr})
-    %for-count(%init{expr}; %cond{expr}; %incre{expr})
-   ] %expr{expr})) ...)
+(macro
+  (example %num{number}
+    (for
+      %[
+        %for-range(%iter{ident} in %range{expr})
+        %for-count(%init{expr}; %cond{expr}; %incre{expr})
+      ]
+      %expr{expr}
+    )
+  )
+  (do
+    (println (+ "example" (show %num)))
+    ((%exists %for-range)
+      ((= (typeof %range) "List") /**/)
+      ()
+    )
+  )
+)
 
 example := NUMBER '(' "for" example._anonymous0 expr ')'
 
-example._anonymous0 := example.for-range | example.for-count
+example.%anonymous0 := example.for-range | example.for-count
 
 example.for-range := IDENT "in" expr
 
 example.for-count := expr ";" expr ";" expr
+
+states: example example.%anonymous0 example.for-range example.for-count
 
 (example 1 (for (i in [1, 2]) (print i)))
 (example 2 (for ((let i 1); (< i 3); (let i (inc i)))) (print i))

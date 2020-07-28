@@ -840,19 +840,7 @@ function evaluate(env: Env, expr: Parser.Expr): Either<Value, string> {
       if (callerVal.isLeft()) {
         let clos = callerVal.unwrapLeft()
         if (clos instanceof Closure || clos instanceof BuiltinClosure) {
-          // refactor: let function itself decide whether to evaluate the arguments
-          // let vals: Value[] = []
-
-          // for (let i = 0; i < expr.args.length; i++) {
-            // let arg = expr.args[i]
-            // let val = evaluate(env, arg)
-            // if (val.isLeft()) {
-            //   vals.push(val.unwrapLeft())
-            // } else {
-            //   return val
-            // }
-          // }
-
+          // let functions themselves decide whether to evaluate the arguments
           return clos.call(env, expr.args, expr.location)
         } else {
           return new Right(`not callable: result of the first item of this s-expression is not a closure${expr.location}; result was ${clos}`)
@@ -894,11 +882,11 @@ function evaluate(env: Env, expr: Parser.Expr): Either<Value, string> {
     }
 
     return new Left(new Dict(map))
-  } else if (expr instanceof Parser.ExprLetVar) { // => ()
+  } else if (expr instanceof Parser.ExprLetVar) {
     let bodyVal = evaluate(env, expr.expr)
     if (bodyVal.isLeft()) {
       env.set(expr.id, bodyVal.unwrapLeft())
-      return new Left(unit)
+      return new Left(bodyVal.unwrapLeft())
     } else {
       return new Right(bodyVal.unwrapRight())
     }
@@ -910,7 +898,7 @@ function evaluate(env: Env, expr: Parser.Expr): Either<Value, string> {
       expr.body
     )
     env.set(expr.id, clos)
-    return new Left(unit)
+    return new Left(clos)
   } else if (expr instanceof Parser.ExprLambda) {
     let clos = new Closure(
       new ClosureMeta('(lambda)', expr.location),

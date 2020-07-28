@@ -750,17 +750,39 @@ function parseMacroExpr(lexer: Lexer): MacroExpr {
   }
 }
 
+interface FillStack {
+  fillStack(stack: (Token | Expr)[]): void
+}
+
+class Production {
+  /** Non-terminal struct instance */
+  instance: FillStack
+
+  /** new Production(new NonTerm()) */
+  constructor(instance: FillStack) {
+    this.instance = instance
+  }
+
+  match(stack: (Token | Expr)[]): FillStack | undefined {
+  }
+}
+
 class MacroPattern {
+  productions: Production[]
+
   constructor(args: MacroArg[]) {
   }
 
-  match(stack: (Token | Expr)[]): Reduction | undefined {
+  match(stack: (Token | Expr)[]): 'shift' | 'reduce' {
     for (let i in this.productions) {
-      if (productions[i].match(stack)) {
-        return function(lexer) {
-        }
+      let t = this.productions[i].match(stack)
+      if (t !== undefined) {
+        t.fillStack(stack)
+        return 'reduce'
       }
     }
+
+    return 'shift'
   }
 }
 
@@ -792,7 +814,7 @@ function expandMacro(lexer: Lexer, macro: Macro): ExprDo {
     let reduction = macro.pattern.match(stack)
     if (reduction !== undefined) {
       // reduce
-      reduction(stack)
+       reduction(stack)
     } else {
       // shift
       token = lexer.next().check()
