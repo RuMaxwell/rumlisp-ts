@@ -1,0 +1,57 @@
+/* TSON+: Typed JSON with some syntax improvement */
+
+corresponding structures:
+Macro Arg                   Macro Call
+Macro.args              <=> SExpr (macro call)
+specified number        <=> specified number
+specified string        <=> specified string
+specified Var           <=> specified Var
+MacroArgStruct token    <=> number | string | Var
+MacroArgStruct number   <=> number
+MacroArgStruct string   <=> string
+MacroArgStruct ident    <=> Var
+MacroArgParen '('       <=> SExpr
+MacroArgParen '['       <=> ListExpr
+MacroArgParen '{'       <=> DictExpr
+
+MacroArgSection
+MacroArgSelector
+MacroArgRepeat
+
+
+Macro(example) {
+    (args) [
+        number(num),
+        MacroArgParen type='(' [
+            ident "for",
+            MacroArgSelector [
+                MacroArgSection(for-range) [
+                    MacroArgStruct(iter) "ident",
+                    ident "in",
+                    MacroArgStruct(range) "expr",
+                ],
+                MacroArgSection(for-count) [
+                    MacroArgStruct(init) "expr",
+                    ident ";",
+                    MacroArgStruct(cond) "expr",
+                    ident ";",
+                    MacroArgStruct(incre) "expr",
+                ],
+            ],
+            MacroArgStruct(expr) "expr",
+        ],
+    ]
+}
+
+SExpr [
+    number 1,
+    SExpr [
+        ident "for",
+        SExpr [
+            ident "i",
+            ident "in",
+            ListExpr [...],
+        ],
+        SExpr [...],
+    ],
+]

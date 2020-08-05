@@ -134,9 +134,6 @@ function parseSExpr(lexer: Lexer): SExpr | ExprLetVar | ExprLetFunc | ExprLambda
   }
 
   let macro = macroReg.get(token.literal)
-  if (macro !== undefined) {
-    return expandMacro(lexer, macro)
-  }
 
   while (!(token.type === TokenType.symbol && token.literal === ')')) {
     let expr = parseExpr(lexer)
@@ -149,7 +146,11 @@ function parseSExpr(lexer: Lexer): SExpr | ExprLetVar | ExprLetFunc | ExprLambda
   // cast off ')' symbol
   lexer.next()
 
-  return new SExpr(items, location)
+  if (macro !== undefined) {
+    return expandMacro(macro, items, location)
+  } else {
+    return new SExpr(items, location)
+  }
 }
 
 export class ListExpr {
@@ -750,76 +751,48 @@ function parseMacroExpr(lexer: Lexer): MacroExpr {
   }
 }
 
-interface FillStack {
-  fillStack(stack: (Token | Expr)[]): void
+class StateTransition {
+  nextState: string
+  operation: 'shift' | 'reduce'
 }
 
-class Production {
-  /** Non-terminal struct instance */
-  instance: FillStack
-
-  /** new Production(new NonTerm()) */
-  constructor(instance: FillStack) {
-    this.instance = instance
-  }
-
-  match(stack: (Token | Expr)[]): FillStack | undefined {
-  }
-}
-
+// Macro expansion automata
 class MacroPattern {
-  productions: Production[]
+  /** a state is a unique string */
+  state: string
+  /** a state and a tokentype forms the key; value is a function manipulating the stack and returns the next state */
+  stateMap: Map<string, (stack: Expr[]) => string>
 
   constructor(args: MacroArg[]) {
+    //
   }
 
-  match(stack: (Token | Expr)[]): 'shift' | 'reduce' {
-    for (let i in this.productions) {
-      let t = this.productions[i].match(stack)
-      if (t !== undefined) {
-        t.fillStack(stack)
-        return 'reduce'
-      }
-    }
-
-    return 'shift'
+  match(stack: Expr[]): { name: string, val: Expr } {
   }
 }
 
 /**
- * Expands the macro call into a do expression.
+ * Expands the macro call to generate an equivalent do expression at the same position.
  * This is actually an LR parser of macro call argument list. The syntax of the parser is defined by the macro definition.
  * See ./syntax_bnf for an example parsing.
  */
-function expandMacro(lexer: Lexer, macro: Macro): ExprDo {
-  if (lexer.eof) {
-    throw new EOF()
-  }
-
-  let structMap: Map<string, Expr | Token> = new Map()
-  function regArg(name: string, val: Expr | Token): void {
+function expandMacro(macro: Macro, items: Expr[], location: string): ExprDo {
+  // This will become a map of macro parameters to the actual arguments (macro bound), to be used to replace macro contents in the macro definition body.
+  let structMap: Map<string, Expr> = new Map()
+  function regArg(name: string, val: Expr): void {
     if (structMap.has(name)) {
-      throw new SyntaxError(`in macro ${macro.name}: duplicated macro argument bound name '${name}' at line ${lexer.line}, column ${lexer.column}`)
+      throw new SyntaxError(`in macro ${macro.name}: duplicated macro argument bound name '${name}'${location}`)
     }
     structMap.set(name, val)
   }
 
-  let stack: (Token | Expr)[] = []
+  let stack: Expr[] = []
 
-  let paren = lexer.saveParenCounter()
-
-  let token = lexer.next().check()
-  stack.push(token)
-  while (!paren.eq(lexer.parenCounter)) {
-    let reduction = macro.pattern.match(stack)
-    if (reduction !== undefined) {
-      // reduce
-       reduction(stack)
-    } else {
-      // shift
-      token = lexer.next().check()
-      stack.push(token)
-    }
+  for (let expr = items.shift(); expr != undefined; ) {
+    stack.push(expr)
+    let reg = macro.pattern.match(stack)
+    regArg(reg.name, reg.val)
+    expr = items.shift()
   }
 
   // TODO: replace macro expr
@@ -829,17 +802,3 @@ function expandMacro(lexer: Lexer, macro: Macro): ExprDo {
 
 // TODO: Test parseMacro
 // TODO: Implement expand of macros
-
-// -TODO-: 改写 lexer.next() 和 lexer.lookNext() 返回 TokenUnchecked
-// token = lexer.next() 后，必须调用 token.check(:TokenType, callback: (:Token) => Either<L, string>) 返回 Either<L, string>
-// check 内部自动检查 eof, err，并保证在实际 TokenType 不等于 expected 的 TokenType 时返回 Right(EXPECTED...) 错误
-// 如果 check 调用没有给 callback，直接返回 Either<L, string> 以供后续检查
-// 即要么使用回调式：
-// return lexer.next().check(TokenType.symbol, function(token) { ... })
-// 要么使用分步逻辑式：
-// let token_ = lexer.next()
-// let check = token_.check(TokenType.symbol)
-// if (!check.isLeft()) { return check }
-// let token = check.unwrapLeft()
-// ...
-// 第一次重构发现并未有效缩减代码量，虽然能够利用编译器提示这里需要 check，但还不如直接 wrap 一个含有 token 的 trivial 类型来做这个。
