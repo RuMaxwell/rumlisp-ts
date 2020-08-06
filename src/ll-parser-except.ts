@@ -475,7 +475,7 @@ function parseMacro(lexer: Lexer): Macro {
   }
 
   while (!(token.type === TokenType.symbol && token.literal === ')')) {
-    let arg = parseMacroArg(lexer)
+    let arg = parseMacroArg(lexer, args)
     args.push(arg)
     token = lexer.lookNext().check()
   }
@@ -538,6 +538,7 @@ class MacroArgParen {
 }
 
 class MacroArgRepeat {
+  name: string | undefined
   selector: '?' | '*' | '+'
   arg: MacroArg
 
@@ -547,7 +548,7 @@ class MacroArgRepeat {
   }
 }
 
-function parseMacroArg(lexer: Lexer): MacroArg {
+function parseMacroArg(lexer: Lexer, args: MacroArg[]): MacroArg {
   if (lexer.eof) {
     throw new SyntaxError(UNEXP_EOF)
   }
@@ -569,10 +570,32 @@ function parseMacroArg(lexer: Lexer): MacroArg {
 
       token = lexer.next().check()
       if (token.type === TokenType.identifier) {
-        // %name...
-        //  ^
-        name = token.literal
-        token = lexer.next().check()
+        if (token.literal === '?'|| token.literal === '*' || token.literal === '+') {
+          // ...%? ...%* ...%+
+          let lastArg = args[args.length - 1]
+          if (lastArg === undefined) {
+            throw new SyntaxError(`expected a macro argument before this selector${token.locate()}`)
+          }
+
+          let mar = new MacroArgRepeat(token.literal, lastArg)
+          if (lastArg instanceof MacroArgStruct ||
+              lastArg instanceof MacroArgSection ||
+              lastArg instanceof MacroArgSelector) {
+            if (lastArg.name !== undefined) {
+              mar.name = lastArg.name
+              lastArg.name = undefined
+            }
+          } else if (lastArg instanceof MacroArgRepeat) {
+            throw new SyntaxError(`cannot repeat a macro segment repeater${token.locate()}`)
+          }
+
+          return mar
+        } else {
+          // %name...
+          //  ^
+          name = token.literal
+          token = lexer.next().check()
+        }
       }
 
       // %name...

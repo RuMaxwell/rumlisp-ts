@@ -424,7 +424,7 @@ If no value to be removed, a runtime error will arise.
 
 **`(get <List> <index:Number>)` -> `*`**
 
-Get the value at the index in the list.
+Get the value at the index in the list. (Read: get an element from the `List` at the index `index`)
 
 The index will be implicitly converted to integer, using `trunc` function, which directly cut off the fractional part of the number.
 
@@ -432,7 +432,7 @@ The index will be implicitly converted to integer, using `trunc` function, which
 
 **`(set <List> <index:Number> <value:expression>)` -> `*`**
 
-Set the value at the index in the list.
+Set the value at the index in the list. (Read: set a value of the `List` at the index `index` with value `value`)
 
 The index will be implicitly converted to integer, using `trunc` function, which directly cut off the fractional part of the number.
 
@@ -468,7 +468,7 @@ Appends `<List>1` to `<List>0`.
 
 **`(map <List> <function val -> res>)` -> `List`**   *(will be in std)*
 
-For each value in the list, applies a function to it and returns a new list containing all the results in the same order.
+For each value in the list, applies a function to it and returns a new list containing all the results in the same order. (Read: map the list with the function)
 
 e.g. `(map [1 2 3] (\ x (+ x 1))` => `[2 3 4]`
 
@@ -476,7 +476,7 @@ e.g. `(map [1 2 3] (\ x (+ x 1))` => `[2 3 4]`
 
 **`(filter <List> <function val -> Boolean>` -> `List`**   *(will be in std)*
 
-Filters out all values not satisfying the given constraint (i.e. when called by the function, results in `#f`) in the list, returns a new list only containing values satisfying the constraint.
+Filters out all values not satisfying the given constraint (i.e. when called by the function, results in `#f`) in the list, returns a new list only containing values satisfying the constraint. (Read: filter the list with the predicate)
 
 e.g. `(filter [-1 0 2 3] (\ x (> x 0))` => `[2 3]`
 

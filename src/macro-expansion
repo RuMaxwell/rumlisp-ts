@@ -55,3 +55,66 @@ SExpr [
         SExpr [...],
     ],
 ]
+
+
+/^select!\s+(?cols:\S)from(?table:\S)\s+(where\s+(?pred:\E))?$/
+(macro (select! %cols{string}%+ from %table{string} %(where %pred{expr})%?)
+    (do
+        (let table (orm-read-all %table))
+        (let table (filter table (\ row (select %%cols table))))
+        (%if (%exists %pred)
+            (filter table %pred)
+            table
+        )
+    )
+)
+
+(select! "name" "gender" "age" from "students" where (\ row (= (get "gender" row) "female")))
+
+Macro(select!) args=[
+    MacroArgRepeat(cols) "+" {
+        MacroArgStruct "string"
+    }
+    ident "from"
+    MacroArgStruct(table) "string"
+    MacroArgRepeat "?" {
+        MacroArgSection {
+            ident "where"
+            MacroArgStruct(pred) "expr"
+        }
+    }
+]
+
+SExpr [
+    -- ident "select!"
+    string "name"
+    string "gender"
+    string "age"
+    ident "from"
+    string "students"
+    ident "where"
+    ExprLambda {...}
+]
+
+state: repeat 0 (>= 1) %{string} => %cols
+%cols: ...[]
+
+state: repeat 1 (>= 1) %{string} => %cols
+%cols: ...["name"]
+
+state: repeat 2 (>= 1) %{string} => %cols
+%cols: ...["name" "gender"]
+
+state: repeat 3 (>= 1) %{string} => %cols
+%cols: ...["name" "gender" "age"]
+
+state: single from
+%cols: ...["name" "gender" "age"]
+
+state: single %{string}
+%cols: ...["name" "gender" "age"]
+%table: "students"
+
+state: repeat 0 (<= 1) %(...)
+%cols: ...["name" "gender" "age"]
+%table: "students"
