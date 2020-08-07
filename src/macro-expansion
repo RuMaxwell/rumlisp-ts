@@ -69,6 +69,8 @@ SExpr [
     )
 )
 
+ATOM struct+ ATOM struct (ATOM struct)?
+
 (select! "name" "gender" "age" from "students" where (\ row (= (get "gender" row) "female")))
 
 Macro(select!) args=[
@@ -96,25 +98,35 @@ SExpr [
     ExprLambda {...}
 ]
 
-state: repeat 0 (>= 1) %{string} => %cols
-%cols: ...[]
 
-state: repeat 1 (>= 1) %{string} => %cols
-%cols: ...["name"]
+Disambiguation
 
-state: repeat 2 (>= 1) %{string} => %cols
-%cols: ...["name" "gender"]
+  /a.*a/ matches "a---aa---a": "a---a" and "a---a", but not "a---aa---a", i.e. /a.*a/ = /a.*?a/. e.g. Quotes of string literals.
+  /a.*b/ matches "a--a--b--b": "a--a--b--b" and "a--b", but not "a--a--b". e.g. Parenthesis.
 
-state: repeat 3 (>= 1) %{string} => %cols
-%cols: ...["name" "gender" "age"]
 
-state: single from
-%cols: ...["name" "gender" "age"]
+Simplification
 
-state: single %{string}
-%cols: ...["name" "gender" "age"]
-%table: "students"
+  Selector reduction
+    Selectors are left associated and have the same precedence, e.g. c+* = (c+)*
+    c++ = c+
+    c+* = c*
+    c*+ = c*
+    c** = c*
+    c?? = c?
+    c+? = c*
+    c*? = c*
+    c?+ = c*
+    c?* = c*
 
-state: repeat 0 (<= 1) %(...)
-%cols: ...["name" "gender" "age"]
-%table: "students"
+  Redundant pattern
+    (b*)b = b+
+    b(b*) = b+
+    b*b*  = b*
+    b+b*  = b+
+    b+b+  = bb+
+    b*b+  = b+
+    b?b+  = b+
+    b?b*  = b*
+    b*b?  = b*
+    b+b?  = b+

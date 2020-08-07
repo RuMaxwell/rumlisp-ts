@@ -432,11 +432,13 @@ class Macro {
   name: string
   pattern: MacroPattern
   body: MacroExpr
+  location: string
 
-  constructor(name: string, args: MacroArg[], body: MacroExpr) {
+  constructor(name: string, args: MacroArg[], body: MacroExpr, location: string) {
     this.name = name
-    this.pattern = new MacroPattern(args)
+    this.pattern = new MacroPattern(this, args)
     this.body = body
+    this.location = location
   }
 
   /**
@@ -485,7 +487,7 @@ function parseMacro(lexer: Lexer): Macro {
 
   let expr = parseMacroExpr(lexer)
 
-  let macro = new Macro(name, args, expr)
+  let macro = new Macro(name, args, expr, location)
   if (!macro.register()) {
     throw new SyntaxError(`redefined macro '${name}'${location}`)
   }
@@ -548,6 +550,9 @@ class MacroArgRepeat {
   }
 }
 
+/**
+ * @param args for repeaters to retrieve the last parsed macro argument
+ */
 function parseMacroArg(lexer: Lexer, args: MacroArg[]): MacroArg {
   if (lexer.eof) {
     throw new SyntaxError(UNEXP_EOF)
@@ -612,7 +617,7 @@ function parseMacroArg(lexer: Lexer, args: MacroArg[]): MacroArg {
 
           token = lexer.lookNext().check()
           while (!(token.type === TokenType.symbol && token.literal === ')')) {
-            let arg = parseMacroArg(lexer)
+            let arg = parseMacroArg(lexer, args)
             args.push(arg)
 
             token = lexer.lookNext().check()
@@ -628,7 +633,7 @@ function parseMacroArg(lexer: Lexer, args: MacroArg[]): MacroArg {
 
           token = lexer.lookNext().check()
           while (!(token.type === TokenType.symbol && token.literal === ']')) {
-            let arg = parseMacroArg(lexer)
+            let arg = parseMacroArg(lexer, args)
             choices.push(arg)
 
             token = lexer.lookNext().check()
@@ -676,7 +681,7 @@ function parseMacroArg(lexer: Lexer, args: MacroArg[]): MacroArg {
       let args: MacroArg[] = []
       token = lexer.lookNext().check()
       while (!(token.type === TokenType.symbol && token.literal === endpr)) {
-        let arg = parseMacroArg(lexer)
+        let arg = parseMacroArg(lexer, args)
         args.push(arg)
 
         token = lexer.lookNext().check()
@@ -774,23 +779,92 @@ function parseMacroExpr(lexer: Lexer): MacroExpr {
   }
 }
 
-class StateTransition {
-  nextState: string
-  operation: 'shift' | 'reduce'
+type StructMap = Map<string, Expr>
+/** Returns whether the path is accepted by current state. */
+type StateChangeGuard = (path: Expr, pointer: StatePointer, structMap: StructMap) => boolean
+
+class StateEdge {
+  from: StateVertex
+  to: StateVertex
+  guard?: StateChangeGuard
+
+  constructor(from: StateVertex, to: StateVertex, guard?: StateChangeGuard) {
+    this.from = from
+    this.to = to
+    this.guard = guard
+  }
+}
+
+class StateVertex {
+  tag: string
+  outs: StateEdge[] = []
+
+  constructor(tag: string) {
+    this.tag = tag
+  }
+
+  addArrowTo(vertex: StateVertex, guard?: StateChangeGuard): this {
+    this.outs.push(new StateEdge(this, vertex, guard))
+    return this
+  }
+}
+
+let spStates: {[keys: string]: any} = {}
+let spPointers: StatePointer[] = []
+
+/** macro parser kernel */
+class StatePointer {
+  to: StateVertex
+  states: {[keys: string]: any} = {}
+  pointers: StatePointer[] = []
+
+  constructor(to: StateVertex) {
+    this.to = to
+    this.states = spStates
+    this.pointers = spPointers
+  }
+
+  clone(): StatePointer {
+    return new StatePointer(this.to)
+  }
+
+  run(items: Expr[], callLocation: string): void {
+    let item = items.unshift()
+    while (item !== undefined) {
+      for (let i in this.to.outs) {
+        let out = this.to.outs[i]
+        if (out.guard === undefined && this.to.outs.length === 1) {
+          this.pointers.push(this.clone())
+          this.to = out.to
+        }
+      }
+    }
+  }
 }
 
 // Macro expansion automata
 class MacroPattern {
+  macro: Macro
   /** a state is a unique string */
-  state: string
+  graph: StateVertex[] = []
   /** a state and a tokentype forms the key; value is a function manipulating the stack and returns the next state */
-  stateMap: Map<string, (stack: Expr[]) => string>
+  structMap: StructMap = new Map()
 
-  constructor(args: MacroArg[]) {
-    //
+  constructor(macro: Macro, args: MacroArg[]) {
+    this.macro = macro
+    // init graph
   }
 
-  match(stack: Expr[]): { name: string, val: Expr } {
+  run(items: Expr[], callLocation: string): void {
+    spPointers = [new StatePointer(this.graph[0])]
+    spPointers[0].run(items, callLocation)
+  }
+
+  private regArg(name: string, expr: Expr): void {
+    if (this.structMap.has(name)) {
+      throw new SyntaxError(`in macro ${this.macro.name}: duplicated macro argument bound name '${name}'${this.macro.location}`)
+    }
+    this.structMap.set(name, expr)
   }
 }
 
@@ -800,27 +874,11 @@ class MacroPattern {
  * See ./syntax_bnf for an example parsing.
  */
 function expandMacro(macro: Macro, items: Expr[], location: string): ExprDo {
-  // This will become a map of macro parameters to the actual arguments (macro bound), to be used to replace macro contents in the macro definition body.
-  let structMap: Map<string, Expr> = new Map()
-  function regArg(name: string, val: Expr): void {
-    if (structMap.has(name)) {
-      throw new SyntaxError(`in macro ${macro.name}: duplicated macro argument bound name '${name}'${location}`)
-    }
-    structMap.set(name, val)
-  }
+  macro.pattern.run(items, location)
 
-  let stack: Expr[] = []
+  let result = replaceMacroExpr(macro.body, macro.pattern.structMap)
 
-  for (let expr = items.shift(); expr != undefined; ) {
-    stack.push(expr)
-    let reg = macro.pattern.match(stack)
-    regArg(reg.name, reg.val)
-    expr = items.shift()
-  }
-
-  // TODO: replace macro expr
-
-  return new ExprDo([/* TODO: resultant expression */])
+  return new ExprDo([result])
 }
 
 // TODO: Test parseMacro

@@ -11,7 +11,7 @@ do := '(' "do" expr* ')'
 macro := '(' "macro" '(' VARID macro.arg* ')' macro.expr ')'
 
 // TODO: 添加一个 macro.ref，形式是 %name，代表和前面一个 macro arg 完全一致的 arg
-macro.arg := (atom | macro.atomarg | macro.section | macro.selector | '(' macro.arg* ')' | '[' macro.arg* ']' | '{' macro.arg* '}' ) (%empty | '+' | '*' | '?' | "+?" | "*?")
+macro.arg := (atom | macro.atomarg | macro.section | macro.selector | '(' macro.arg* ')' | '[' macro.arg* ']' | '{' macro.arg* '}' ) (%empty | "%+" | "%*" | "%?")
 
 macro.atomarg := '%' VARID? '{' macro.struct '}'
 
