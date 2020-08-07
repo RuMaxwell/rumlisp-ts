@@ -1,6 +1,7 @@
 import { Lexer, TokenType, Token, EOF, SyntaxError } from './lexer-except'
 import { Either, Right, Left } from './utils'
 import { match } from 'assert'
+import { builtinModules } from 'module'
 
 export class Parser {
   lexer: Lexer
@@ -781,16 +782,20 @@ function parseMacroExpr(lexer: Lexer): MacroExpr {
 
 type StructMap = Map<string, Expr>
 /** Returns whether the path is accepted by current state. */
-type StateChangeGuard = (path: Expr, pointer: StatePointer, structMap: StructMap) => boolean
+type StateChangeGuard = (path: Expr) => boolean
+
+let spStates: {[keys: string]: any} = {}
 
 class StateEdge {
   from: StateVertex
   to: StateVertex
+  bound: string
   guard?: StateChangeGuard
 
-  constructor(from: StateVertex, to: StateVertex, guard?: StateChangeGuard) {
+  constructor(from: StateVertex, to: StateVertex, bound: string, guard?: StateChangeGuard) {
     this.from = from
     this.to = to
+    this.bound = bound
     this.guard = guard
   }
 }
@@ -803,39 +808,59 @@ class StateVertex {
     this.tag = tag
   }
 
-  addArrowTo(vertex: StateVertex, guard?: StateChangeGuard): this {
-    this.outs.push(new StateEdge(this, vertex, guard))
+  addArrowTo(vertex: StateVertex, bound: string, guard?: StateChangeGuard): this {
+    this.outs.push(new StateEdge(this, vertex, bound, guard))
     return this
   }
 }
 
-let spStates: {[keys: string]: any} = {}
 let spPointers: StatePointer[] = []
 
 /** macro parser kernel */
 class StatePointer {
   to: StateVertex
-  states: {[keys: string]: any} = {}
-  pointers: StatePointer[] = []
 
   constructor(to: StateVertex) {
     this.to = to
-    this.states = spStates
-    this.pointers = spPointers
   }
 
   clone(): StatePointer {
     return new StatePointer(this.to)
   }
 
-  run(items: Expr[], callLocation: string): void {
-    let item = items.unshift()
-    while (item !== undefined) {
-      for (let i in this.to.outs) {
-        let out = this.to.outs[i]
-        if (out.guard === undefined && this.to.outs.length === 1) {
-          this.pointers.push(this.clone())
-          this.to = out.to
+  run(items: Expr[], callLocation: string, structMap: StructMap): void {
+    let item = items[0]
+    if (item !== undefined) {
+      let outs = this.to.outs
+      if (outs.length === 0) {
+        if (items.length > 0) {
+          throw new SyntaxError(`redundant macro arguments${callLocation}`)
+        } else {
+          return
+        }
+      } else if (outs.length === 1 && outs[0].guard === undefined) {
+        this.to = outs[0].to
+        this.run(items, callLocation, structMap)
+      } else {
+        // this vertex has many outer edges. for every edge accepting the first expr of items,
+        // make a new clone of pointer and let it goes one by one.
+        for (let i in outs) {
+          let out = outs[i]
+          if (out.guard === undefined) {
+            let p = this.clone()
+            p.to = out.to
+            spPointers.push(p)
+            p.run(items, callLocation, structMap)
+          } else if (out.guard(item)) {
+            // if two arg have the same bound name, the former will be shadowed by the latter
+            structMap.set(out.bound, item)
+            // TODO: deal with repeater
+
+            let p = this.clone()
+            p.to = out.to
+            spPointers.push(p)
+            p.run(items.slice(1), callLocation, structMap)
+          }
         }
       }
     }
@@ -856,15 +881,9 @@ class MacroPattern {
   }
 
   run(items: Expr[], callLocation: string): void {
+    items.push(new Var('%#', '')) // end symbol
     spPointers = [new StatePointer(this.graph[0])]
-    spPointers[0].run(items, callLocation)
-  }
-
-  private regArg(name: string, expr: Expr): void {
-    if (this.structMap.has(name)) {
-      throw new SyntaxError(`in macro ${this.macro.name}: duplicated macro argument bound name '${name}'${this.macro.location}`)
-    }
-    this.structMap.set(name, expr)
+    spPointers[0].run(items, callLocation, this.structMap)
   }
 }
 
