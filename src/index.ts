@@ -15,7 +15,7 @@ function showHelp() {
   process.stdout.write(`Commands (starts with :)
   :exit           Exit this interactive console.
   :<any other>    Prompt for this help.
-  
+
 Or directly type RumLisp expressions to evaluate them and see the results.
 `)
 }
@@ -24,7 +24,6 @@ function repl() {
   showGreetings()
   let cmd = ''
   while (true) {
-    // process.stdout.write('> ');
     cmd = question('> ')
     if (cmd.startsWith(':')) {
       if (cmd === ':exit') {
@@ -37,7 +36,11 @@ function repl() {
       values.handle(
         vals => {
           for (let i in vals) {
-            console.log(`(result) ${vals[i]}`)
+            if (typeof vals[i] === 'string') {
+              console.log(`(result) "${vals[i]}"`)
+            } else {
+              console.log(`(result) ${vals[i]}`)
+            }
           }
         },
         err => console.error(err)

@@ -1,7 +1,5 @@
 import { Lexer, TokenType, Token, EOF, SyntaxError } from './lexer-except'
 import { Either, Right, Left } from './utils'
-import { match } from 'assert'
-import { builtinModules } from 'module'
 
 export class Parser {
   lexer: Lexer
@@ -143,7 +141,7 @@ function parseSExpr(lexer: Lexer): SExpr | ExprLetVar | ExprLetFunc | ExprLambda
 
     token = lexer.lookNext().check()
   }
-  
+
   // cast off ')' symbol
   lexer.next()
 
@@ -429,7 +427,7 @@ function parseDo(lexer: Lexer): ExprDo {
   return new ExprDo(exprs)
 }
 
-class Macro {
+export class Macro {
   name: string
   pattern: MacroPattern
   body: MacroExpr
@@ -492,6 +490,9 @@ function parseMacro(lexer: Lexer): Macro {
   if (!macro.register()) {
     throw new SyntaxError(`redefined macro '${name}'${location}`)
   }
+
+  // skip ')'
+  lexer.next()
 
   return macro
 }
@@ -887,12 +888,18 @@ class MacroPattern {
   }
 }
 
+function replaceMacroExpr(expr: MacroExpr, structMap: StructMap): Expr {
+  throw 'not implemented'
+}
+
 /**
  * Expands the macro call to generate an equivalent do expression at the same position.
  * This is actually an LR parser of macro call argument list. The syntax of the parser is defined by the macro definition.
  * See ./syntax_bnf for an example parsing.
  */
 function expandMacro(macro: Macro, items: Expr[], location: string): ExprDo {
+  throw new SyntaxError('macro: not implemented')
+
   macro.pattern.run(items, location)
 
   let result = replaceMacroExpr(macro.body, macro.pattern.structMap)

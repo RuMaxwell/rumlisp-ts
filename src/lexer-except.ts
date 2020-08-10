@@ -6,7 +6,7 @@ class SourcePosition {
   column: number
 
   constructor(source: string) {
-    this.source = source
+    this.source = source.trim()
     this.line = 1
     this.column = 1
   }

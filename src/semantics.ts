@@ -1,6 +1,7 @@
 import * as Parser from './ll-parser-except'
 import { Either, Right, Left } from './utils'
 import * as path from 'path'
+import { readFileSync } from 'fs'
 
 export type Value = Unit | number | string | List | Dict | Closure | BuiltinClosure
 
@@ -109,12 +110,19 @@ export class Closure {
 class BuiltinClosure {
   id: string
   params: string[]
-  _call: (args: Value[], location: string, env?: Env) => Either<Value, string>
+  _call?: (args: Value[], location: string, env?: Env) => Either<Value, string>
+  _callExpr?: (argEnv: Env, args: Parser.Expr[], location: string) => Either<Value, string>
 
-  constructor(id: string, params: string[], call: (args: Value[], location: string, env?: Env) => Either<Value, string>) {
+  constructor(
+    id: string,
+    params: string[],
+    call?: (args: Value[], location: string, env?: Env) => Either<Value, string>,
+    callExpr?: (argEnv: Env, args: Parser.Expr[], location: string, env?: Env) => Either<Value, string>
+  ) {
     this.id = id
     this.params = params
     this._call = call
+    this._callExpr = callExpr
   }
 
   call(argEnv: Env, args: Parser.Expr[], location: string): Either<Value, string> {
@@ -128,18 +136,24 @@ class BuiltinClosure {
       return evaluate(argEnv, args[1])
     }
 
-    let vals: Value[] = []
+    if (this._call !== undefined) {
+      let vals: Value[] = []
 
-    for (let i in args) {
-      let val = evaluate(argEnv, args[i])
-      if (val.isLeft()) {
-        vals.push(val.unwrapLeft())
-      } else {
-        return val
+      for (let i in args) {
+        let val = evaluate(argEnv, args[i])
+        if (val.isLeft()) {
+          vals.push(val.unwrapLeft())
+        } else {
+          return val
+        }
       }
-    }
 
-    return this._call(vals, location, argEnv)
+      return this._call(vals, location, argEnv)
+    } else if (this._callExpr !== undefined) {
+      return this._callExpr(argEnv, args, location)
+    } else {
+      throw new Error('not possible')
+    }
   }
 
   toString(): string {
@@ -155,9 +169,14 @@ const boolFalse: Value = new BuiltinClosure('#f', ['$0', '$1'], (args, _) => {
   return new Left(args[1])
 })
 
+function isBool(v: Value): boolean {
+  return v === boolTrue || v === boolFalse
+}
+
 function showValueType(v: Value): string {
-  return typeof v === 'number' ? 'number' :
-    typeof v === 'string' ? 'string' :
+  return typeof v === 'number' ? 'Number' :
+    typeof v === 'string' ? 'String' :
+    isBool(v) ? 'Boolean' :
     v instanceof Unit ? '()' :
     v instanceof List ? 'List' :
     v instanceof Dict ? 'Dict' :
@@ -416,6 +435,16 @@ export const BUILTINS: {[keys: string]: () => Value} = {
     new BuiltinClosure('show', ['$0'], (args, location) => {
       let [l] = args
       return new Left(`${l}`)
+    })
+  ,
+  'repr': () =>
+    new BuiltinClosure('repr', ['$0'], (args, location) => {
+      let [l] = args
+      if (typeof l === 'string') {
+        return new Left(`"${l}"`)
+      } else {
+        return new Left(`${l}`)
+      }
     })
   ,
   'parse': () =>
@@ -687,6 +716,92 @@ export const BUILTINS: {[keys: string]: () => Value} = {
       return new Left(unit)
     })
   ,
+  'type': () =>
+    new BuiltinClosure('type', ['x'], (args, location) => {
+      let [x] = args
+      return new Left(showValueType(x))
+    })
+  ,
+  'type-is': () =>
+    new BuiltinClosure('type-is', ['x', 'T'], (args, location) => {
+      let [x, t] = args
+      if (typeof t === 'string') {
+        return new Left(showValueType(x) === t)
+      } else {
+        return new Right(`unaccepted arguments types (${showValueType(t)}) for 'type-is'${location}`)
+      }
+    })
+  ,
+  // short-cut
+  'and': () =>
+    new BuiltinClosure('and', ['x', 'y'], undefined, (argEnv, args, location) => {
+      let [xe, ye] = args
+      let x = evaluate(argEnv, xe)
+      if (!x.isLeft()) {
+        return x
+      }
+      if (!isBool(x)) {
+        return new Right(`unaccepted arguments types (${showValueType(x)} <unknown>) for 'and'${location}`)
+      }
+      if (x === boolFalse) {
+        return new Left(boolFalse)
+      } else {
+        let y = evaluate(argEnv, ye)
+        if (!y.isLeft()) {
+          return y
+        }
+        if (!isBool(y)) {
+          return new Right(`unaccepted arguments types (${showValueType(x)} ${showValueType(y)}) for 'and'${location}`)
+        }
+        if (x === boolFalse) {
+          return new Left(boolFalse)
+        } else {
+          return new Left(boolTrue)
+        }
+      }
+    })
+  ,
+  // short-cut
+  'or': () =>
+    new BuiltinClosure('or', ['x', 'y'], undefined, (argEnv, args, location) => {
+      let [xe, ye] = args
+      let x = evaluate(argEnv, xe)
+      if (!x.isLeft()) {
+        return x
+      }
+      if (!isBool(x)) {
+        return new Right(`unaccepted arguments types (${showValueType(x)} <unknown>) for 'or'${location}`)
+      }
+      if (x === boolTrue) {
+        return new Left(boolTrue)
+      } else {
+        let y = evaluate(argEnv, ye)
+        if (!y.isLeft()) {
+          return y
+        }
+        if (!isBool(y)) {
+          return new Right(`unaccepted arguments types (${showValueType(x)} ${showValueType(y)}) for 'or'${location}`)
+        }
+        if (x === boolFalse) {
+          return new Left(boolFalse)
+        } else {
+          return new Left(boolTrue)
+        }
+      }
+    })
+  ,
+  'not': () =>
+    new BuiltinClosure('not', ['x'], (args, location) => {
+      let [x] = args
+      if (x === boolFalse) {
+        return new Left(boolTrue)
+      } else if (x === boolTrue) {
+        return new Left(boolFalse)
+      } else {
+        return new Right(`unaccepted arguments types (${showValueType(x)}) for 'not'${location}`)
+      }
+    })
+  ,
   'eval': () =>
     new BuiltinClosure('eval', ['src'], (args, location, env) => {
       let [src] = args
@@ -763,12 +878,44 @@ class Env {
   }
 }
 
+function loadPrelude(env: Env) {
+  let libpath = process.env['RISP_LIB']
+  if (libpath === undefined) {
+    console.error('fatal error: environment variable \'RISP_LIB\' is not defined; prelude is not imported')
+    return
+  }
+
+  let source = ''
+  try {
+    source = readFileSync(path.join(libpath, 'prelude.risp')).toString()
+  } catch (e) {
+    console.error('fatal error: prelude file is not found or cannot be read; prelude is not imported')
+    return
+  }
+
+  const parser = new Parser.Parser(source)
+  let ast = parser.parse()
+  if (ast.isLeft()) {
+    let exprs = ast.unwrapLeft()
+    for (let i = 0; i < exprs.length; i++) {
+      let val = evaluate(env, exprs[i])
+      if (!val.isLeft()) {
+        throw new Error('evaluation of prelude failed: ' + ast.unwrapRight())
+      }
+    }
+  } else {
+    throw new Error('parse of prelude failed: ' + ast.unwrapRight())
+  }
+}
+
 function onceGetInitialEnv(): Env {
   let env = new Env()
 
   for (let id in BUILTINS) {
     env.set(id, BUILTINS[id]())
   }
+
+  loadPrelude(env)
 
   return env
 }
@@ -918,6 +1065,9 @@ function evaluate(env: Env, expr: Parser.Expr): Either<Value, string> {
       }
     }
     return v
+  } else if (expr instanceof Parser.Macro) {
+    // macro definition
+    return new Left(unit)
   } else {
     throw new Error('never here')
   }

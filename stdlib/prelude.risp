@@ -1,0 +1,70 @@
+(let (inc x) (add x 1))
+
+(macro (if %cond{expr} then %then{expr} %(else %else{expr})%?) (%cond %then ((%exists %else) %else ())))
+
+(let (head list)
+  ((empty? list)
+    (error "trying to get the head of an empty list")
+    (get list 0)))
+
+(let (last list)
+  ((empty? list)
+    (error "trying to get the last of an empty list")
+    (get list (sub (len list) 1))))
+
+(let (front list) (slice list 0 -1))
+
+(let (tail list) (slice list 1 (len list)))
+
+(let (map list fn)
+  ((empty? list)
+    []
+    (do
+      (let h (head list))
+      (let t (tail list))
+      (let tm (map t fn))
+      (push-front tm (fn h)))))
+
+; read: left-fold the list with predicate pred from begin value val
+; pred: acc x -> acc
+; val [ a b c ] => (pred val a) [ b c ] => (pred (pred val a) b) [ c ] => (pred (pred (pred val a) b) c)
+(let (foldl list pred val)
+  ((empty? list)
+    val
+    (foldl (tail list) pred (pred val (head list)))))
+
+; read: left-fold this list itself with predicate pred
+; pred: acc x -> acc
+; [ a b c ] => (pred a b) [ c ] => (pred (pred a b) c)
+(let (foldl-self list pred)
+  ((empty? list)
+    (error "cannot foldl-self on empty list")
+    (do
+      (let t (tail list))
+      ((empty? t)
+        (head list)
+        (foldl t pred (head list))))))
+
+; read: right-fold the list with predicate pred from begin value val
+; pred: x acc -> acc
+; [ a b c ] val => [ a b ] (pred c val) => [ c ] (pred b (pred c val)) => (pred a (pred b (pred c val)))
+(let (foldr list pred val)
+  ((empty? list)
+    val
+    (foldr (front list) pred (pred (last list) val))))
+
+; read: right-fold this list itself with predicate pred
+; pred: x acc -> acc
+; [ a b c ] => [ a ] (pred b c) => (pred a (pred b c))
+(let (foldr-self list pred)
+  ((empty? list)
+    (error "cannot foldr-self on empty list")
+    (do
+      (let f (front list))
+      ((empty? f)
+        (last list)
+        (foldr f pred (last list))))))
+
+(macro (+ %terms{expr}%+) (foldl1 %%terms (\ (x y) (add x y))))
+
+(macro (- %terms{expr}%+) (foldl %%terms (\ (x y) (add x y)) 0))
