@@ -1,11 +1,11 @@
-import { Lexer, TokenType, Token, EOF, SyntaxError } from './lexer-except'
+import { Lexer, TokenType, EOF, SyntaxError } from './lexer-except'
 import { Either, Right, Left } from './utils'
 
 export class Parser {
   lexer: Lexer
 
-  constructor(source: string) {
-    this.lexer = new Lexer(source)
+  constructor(filepath: string, source: string) {
+    this.lexer = new Lexer(filepath, source)
   }
 
   parse(): Either<Expr[], string> {
@@ -36,7 +36,7 @@ export class Parser {
 
 const UNEXP_EOF = 'syntax error: unexpected EOF'
 
-type SyntaxHandler = (lexer: Lexer) => ExprLetVar | ExprLetFunc | ExprLambda | ExprDo | Macro
+type SyntaxHandler = (lexer: Lexer) => ExprLetVar | ExprLetFunc | ExprLambda | ExprDo | ExprExec | Macro
 
 const macroReg: Map<string, Macro> = new Map()
 
@@ -45,10 +45,11 @@ export const KEYWORD: {[keys: string]: SyntaxHandler | undefined} = {
   'let': parseLet,
   '\\': parseLambda,
   'do': parseDo,
+  '@': parseExprExec,
   'macro': parseMacro,
 }
 
-export type Expr = number | string | Var | SExpr | ListExpr | DictExpr | ExprLetVar | ExprLetFunc | ExprLambda | ExprDo | Macro
+export type Expr = number | string | Var | SExpr | ListExpr | DictExpr | ExprLetVar | ExprLetFunc | ExprLambda | ExprDo | ExprExec | Macro
 
 function parseExpr(lexer: Lexer): Expr {
   if (lexer.eof) {
@@ -427,6 +428,38 @@ function parseDo(lexer: Lexer): ExprDo {
   return new ExprDo(exprs)
 }
 
+export class ExprExec {
+  exprs: Expr[]
+  location: string
+
+  constructor(exprs: Expr[], location: string) {
+    this.exprs = exprs
+    this.location = location
+  }
+}
+
+function parseExprExec(lexer: Lexer): ExprExec {
+  if (lexer.eof) {
+    throw new SyntaxError(UNEXP_EOF)
+  }
+
+  let location = ` at line ${lexer.line}, column ${lexer.column}`
+
+  let exprs: Expr[] = []
+  let token = lexer.lookNext().check()
+  while (!(token.type === TokenType.symbol && token.literal === ')')) {
+    let expr = parseExpr(lexer)
+    exprs.push(expr)
+
+    token = lexer.lookNext().check()
+  }
+
+  // skip ')'
+  lexer.next()
+
+  return new ExprExec(exprs, location)
+}
+
 export class Macro {
   name: string
   pattern: MacroPattern
@@ -488,7 +521,10 @@ function parseMacro(lexer: Lexer): Macro {
 
   let macro = new Macro(name, args, expr, location)
   if (!macro.register()) {
-    throw new SyntaxError(`redefined macro '${name}'${location}`)
+    let m = macroReg.get(name)
+    // throw new SyntaxError(`redefined macro '${name}'${location}`)
+    if (m === undefined) throw 'not possible'
+    macro = m
   }
 
   // skip ')'

@@ -32,6 +32,10 @@ function repl() {
         showHelp()
       }
     } else {
+      if ((!cmd.startsWith('(') || !cmd.endsWith(')')) && cmd.split(' ').length > 1) {
+        cmd = `(${cmd})`
+      }
+
       let values = interpret(cmd)
       values.handle(
         vals => {
@@ -53,7 +57,7 @@ function main() {
   const argv = process.argv
   if (argv.length > 2) {
     const source = fs.readFileSync(argv[2]).toString()
-    let values = execute(source)
+    let values = execute(argv[2], source)
     values.handle(
       _vals => {
       },

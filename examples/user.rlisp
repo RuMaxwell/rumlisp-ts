@@ -1,0 +1,6 @@
+(let ages {
+    ("James" 16)
+    ("Marry" 15)
+    ("Funny" 13)
+    ("Gary" 20)
+})

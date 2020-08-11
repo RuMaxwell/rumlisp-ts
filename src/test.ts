@@ -36,7 +36,7 @@ class Tests {
 
   static semantics_test() {
     const source = fs.readFileSync('examples/semantics_test.risp').toString()
-    let values = execute(source)
+    let values = execute('examples/semantics_test.risp', source)
     values.handle(
       vals => {
         for (let i in vals) {

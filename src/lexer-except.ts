@@ -1,11 +1,13 @@
-import { Either, Right, Left } from "./utils"
+import * as path from 'path'
 
 class SourcePosition {
+  filepath: string
   source: string
   line: number
   column: number
 
-  constructor(source: string) {
+  constructor(filepath: string, source: string) {
+    this.filepath = path.normalize(filepath)
     this.source = source.trim()
     this.line = 1
     this.column = 1
@@ -48,7 +50,7 @@ class SourcePosition {
   }
 
   toString(): string {
-    return `line ${this.line}, column ${this.column}`
+    return `line ${this.line}, column ${this.column} in ${this.filepath}`
   }
 }
 
@@ -116,6 +118,10 @@ class UncheckedToken {
 
     return this
   }
+
+  toString(): string {
+    return this.token.toString()
+  }
 }
 
 export class Token {
@@ -132,7 +138,7 @@ export class Token {
   }
 
   toString(): string {
-    return `[${this.type}]:${this.literal}` + (this.line != undefined ? ` at line ${this.line}, column ${this.column}` : '')
+    return `${this.literal}` + (this.line != undefined ? ` at line ${this.line}, column ${this.column}` : '')
   }
 
   locate(): string {
@@ -229,8 +235,8 @@ export class Lexer {
   private rules: Rule[]
   private _parenCounter = new ParenCounter()
 
-  constructor(source: string, rules: Rule[] = rumlispLexRules) {
-    this.sp = new SourcePosition(source)
+  constructor(filepath: string, source: string, rules: Rule[] = rumlispLexRules) {
+    this.sp = new SourcePosition(filepath, source)
     this.rules = rules
   }
 
