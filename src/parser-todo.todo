@@ -1,0 +1,120 @@
+Prototype
+
+(let phone-list [])
+
+(let Phone {
+  data : ["IMEI" "memory" "tel-no"]
+  new : (let (Phone.new memory tel-no) (do
+    (let my-phone {
+      IMEI : (time)
+      memory : memory
+      tel-no : tel-no
+    })
+    (push phone-list my-phone)
+    my-phone
+  ))
+  methods : {
+    dial : Phone.dial
+    send : Phone.send
+  }
+})
+
+(let (Phone.dial this dail-no) (do
+  (let dail-phone (find (\ phone (= (. phone tel-no) dail-no))))
+  ((!? dail-phone unit)
+    ((. this send) dail-phone (. this memory))
+    unit
+  )
+))
+
+(let (Phone.send this target-phone) (do
+  (set target-phone "memory" (. this memory))
+  (set this "memory" "")
+))
+
+;; create an instance from prototype
+(let (new proto ``args) (do
+  (let this {})
+  (case (!? (. proto new))
+    (apply (. proto new) args)
+   case (!? (. proto data))
+    (foreach (item i) in (. proto data)
+      (set this item (get args i))
+    )
+   default
+    (if (!? (. proto methods))
+      (foreach key in (keys (. proto methods))
+        (set this key (get methods key))
+      )
+    )
+  )
+  (set this "__proto__" proto)
+  this
+))
+
+(let phone (new Phone "ABCDEF" "Hello" "0123456789"))
+
+(. phone __proto__)   ;; <Dict "Phone">
+
+
+;; abstract the above pattern to
+(proto (Phone IMEI memory tel-no)
+  ;; construction, returns the instance
+  (...)
+  ;; methods
+  (let dail ...)
+  (let send ...)
+)
+
+(let phone (new Phone "ABCDEF" "Hello" "0123456789"))
+
+(. phone __proto__)   ;; <Dict "Phone">
+
+
+Varadic Args
+
+(let (fmt template ``args)
+  (foreach arg in args
+    `(do
+      (let template (replace-once template "{}" (show arg)))
+    )
+  )
+)
+
+
+Lazy Args
+
+(let (for `start ,0 `cond ,1 `defer do `body) ...)
+
+(for `(let i 0) , `(< i 5) , `(let i (inc i)) do
+  `(print i)
+)
+
+
+Lazy Features
+
+;; `expr : %Expr = unit | Number | String | Boolean | %Id | %SExpr | %List | %Dict
+
+
+
+Relative Utility Functions
+
+(call function ``args)  ;; ((...any[]) -> a, ...any[]) -> a
+
+(apply function args)   ;; ((...any[]) -> a, any[]) -> a
+
+(curry function)        ;; ((a, b, c, ..., y) -> z) -> a -> b -> c -> ... -> y -> z
+
+
+RTTI
+
+(type x)                ;; any -> "unit" | "Number" | "String" | "Boolean" | "Closure" | "List" | "Dict"
+
+(type x) == "Boolean" => (type x) == "Closure"
+
+if (type f) == "Closure"
+(__name__ f)  ;; {String} name of the function ("" for lambda function)
+(__args__ f)  ;; {String[]} formal arguments of the function
+(__env__ f)   ;; {Dict<String, any>} context catched by the closure
+(__body__ f)  ;; {%Expr} the body (as a lazy expression) of the function
+(__text__ f)  ;; {String} the original string definition of the function
