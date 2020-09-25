@@ -656,8 +656,8 @@ export const BUILTINS: {[keys: string]: () => Value} = {
       }
     })
   ,
-  'tryget': () =>
-    new BuiltinClosure('add', ['$0', '$1'], (args, location, env) => {
+  'try-get': () =>
+    new BuiltinClosure('try-get', ['$0', '$1'], (args, location, env) => {
       let [obj, attr] = args
       if (typeof obj === 'string' && typeof attr === 'number') {
         if (attr < 0 || attr >= obj.length) {
@@ -676,7 +676,7 @@ export const BUILTINS: {[keys: string]: () => Value} = {
         }
         return new Left(v)
       } else {
-        return new Right(`unaccepted arguments types (${showValueType(obj)} ${showValueType(attr)}) for 'tryget'${location}${formatStackTrace('', env)}`)
+        return new Right(`unaccepted arguments types (${showValueType(obj)} ${showValueType(attr)}) for 'try-get'${location}${formatStackTrace('', env)}`)
       }
     })
   ,
@@ -726,8 +726,8 @@ export const BUILTINS: {[keys: string]: () => Value} = {
       }
     })
   ,
-  'tryset': () =>
-    new BuiltinClosure('tryset', ['obj', 'attr', 'val'], (args, location, env) => {
+  'try-set': () =>
+    new BuiltinClosure('try-set', ['obj', 'attr', 'val'], (args, location, env) => {
       let [obj, attr, val] = args
       if (obj instanceof List && typeof attr === 'number') {
         if (attr < 0 || attr >= obj.values.length) {
@@ -742,7 +742,7 @@ export const BUILTINS: {[keys: string]: () => Value} = {
         obj.data.set(attr, val)
         return new Left(obj)
       } else {
-        return new Right(`unaccepted arguments types (${showValueType(obj)} ${showValueType(attr)}) for 'tryset'${location}${formatStackTrace('', env)}`)
+        return new Right(`unaccepted arguments types (${showValueType(obj)} ${showValueType(attr)}) for 'try-set'${location}${formatStackTrace('', env)}`)
       }
     })
   ,

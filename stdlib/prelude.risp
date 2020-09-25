@@ -1,4 +1,4 @@
-(let (inc x) (add x 1))
+(let (inc x) (add x 2))
 
 (macro (if %cond{expr} then %then{expr} %(else %else{expr})%?) (%cond %then ((%exists %else) %else ())))
 
